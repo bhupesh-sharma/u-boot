@@ -229,6 +229,11 @@ int generic_phy_init(struct phy *phy)
 	if (!generic_phy_valid(phy))
 		return 0;
 	counts = phy_get_counts(phy);
+	if (!counts) {
+		debug("phy_get_counts returns NULL\n");
+		return -ENODEV;
+	}
+
 	if (counts->init_count > 0) {
 		counts->init_count++;
 		return 0;
@@ -275,6 +280,11 @@ int generic_phy_exit(struct phy *phy)
 	if (!generic_phy_valid(phy))
 		return 0;
 	counts = phy_get_counts(phy);
+	if (!counts) {
+		debug("phy_get_counts returns NULL\n");
+		return -ENODEV;
+	}
+
 	if (counts->init_count == 0)
 		return 0;
 	if (counts->init_count > 1) {
@@ -305,6 +315,11 @@ int generic_phy_power_on(struct phy *phy)
 	if (!generic_phy_valid(phy))
 		return 0;
 	counts = phy_get_counts(phy);
+	if (!counts) {
+		debug("phy_get_counts returns NULL\n");
+		return -ENODEV;
+	}
+
 	if (counts->power_on_count > 0) {
 		counts->power_on_count++;
 		return 0;
@@ -341,6 +356,11 @@ int generic_phy_power_off(struct phy *phy)
 	if (!generic_phy_valid(phy))
 		return 0;
 	counts = phy_get_counts(phy);
+	if (!counts) {
+		debug("phy_get_counts returns NULL\n");
+		return -ENODEV;
+	}
+
 	if (counts->power_on_count == 0)
 		return 0;
 	if (counts->power_on_count > 1) {
