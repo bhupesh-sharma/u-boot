@@ -230,12 +230,9 @@
 			reset-names = "phy";
 		};
 
-		usb_2_qmpphy: phy@88eb000 {
+		usb_2_qmpphy: phy@88eb200 {
 			compatible = "qcom,sm8250-qmp-usb3-uni-phy";
-			reg = <0x088eb000 0x200>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges;
+			reg = <0x088eb200 0x200>;
 
 			clocks = <&gcc GCC_USB3_SEC_PHY_AUX_CLK>,
 				 <&gcc GCC_USB3_SEC_CLKREF_EN>,
