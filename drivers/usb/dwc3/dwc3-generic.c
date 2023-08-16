@@ -58,6 +58,7 @@ static int dwc3_generic_probe(struct udevice *dev,
 	int __maybe_unused index;
 	ofnode __maybe_unused node;
 
+	printf("%s, Entering func..\n", __func__);
 	dwc3->dev = dev;
 	dwc3->maximum_speed = plat->maximum_speed;
 	dwc3->dr_mode = plat->dr_mode;
@@ -98,6 +99,7 @@ static int dwc3_generic_probe(struct udevice *dev,
 		udelay(1);
 	}
 
+	printf("%s, Setting up PHY..\n", __func__);
 	rc = dwc3_setup_phy(dev, &priv->phys);
 	if (rc && rc != -ENOTSUPP)
 		return rc;
