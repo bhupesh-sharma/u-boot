@@ -97,29 +97,29 @@ int ufshcd_dump_regs(struct ufs_hba *hba, size_t offset, size_t len,
 	return 0;
 }
 
-static void ufshcd_print_tr(struct ufs_hba *hba, int tag, bool pr_prdt)
+void ufshcd_print_tr(struct ufs_hba *hba, int tag, bool pr_prdt)
 {
 	int prdt_length;
 	struct utp_transfer_req_desc *req_desc = hba->utrdl;
 
-	dev_err(hba->dev,
+	dev_info(hba->dev,
 		"UPIU[%d] - Transfer Request Descriptor phys@0x%llx\n",
 		tag, (u64)hba->utrdl);
 
 	ufshcd_hex_dump("UPIU TRD: ", hba->utrdl,
 			sizeof(struct utp_transfer_req_desc));
-	dev_err(hba->dev, "UPIU[%d] - Request UPIU phys@0x%llx\n", tag,
+	dev_info(hba->dev, "UPIU[%d] - Request UPIU phys@0x%llx\n", tag,
 		(u64)hba->ucd_req_ptr);
 	ufshcd_hex_dump("UPIU REQ: ", hba->ucd_req_ptr,
 			sizeof(struct utp_upiu_req));
-	dev_err(hba->dev, "UPIU[%d] - Response UPIU phys@0x%llx\n", tag,
+	dev_info(hba->dev, "UPIU[%d] - Response UPIU phys@0x%llx\n", tag,
 		(u64)hba->ucd_rsp_ptr);
 	ufshcd_hex_dump("UPIU RSP: ", hba->ucd_rsp_ptr,
 			sizeof(struct utp_upiu_rsp));
 
 	prdt_length = le16_to_cpu(req_desc->prd_table_length);
 
-	dev_err(hba->dev,
+	dev_info(hba->dev,
 		"UPIU[%d] - PRDT - %d entries  phys@0x%llx\n",
 		tag, prdt_length,
 		(u64)hba->ucd_prdt_ptr);
@@ -127,6 +127,11 @@ static void ufshcd_print_tr(struct ufs_hba *hba, int tag, bool pr_prdt)
 	if (pr_prdt)
 		ufshcd_hex_dump("UPIU PRDT: ", hba->ucd_prdt_ptr,
 			sizeof(struct ufshcd_sg_entry) * prdt_length);
+}
+
+void ufshcd_dbg_register_dump(struct ufs_hba *hba)
+{
+	ufshcd_ops_dbg_register_dump(hba);
 }
 
 /*
@@ -246,7 +251,7 @@ static int ufshcd_send_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd)
 		return -EIO;
 	}
 
-	printf("sending uic command:%d\n", uic_cmd->command);
+	debug("sending uic command:%d\n", uic_cmd->command);
 
 	/* Write Args */
 	ufshcd_writel(hba, uic_cmd->argument1, REG_UIC_COMMAND_ARG_1);
@@ -281,7 +286,7 @@ static int ufshcd_send_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd)
 	uic_cmd->argument2 = ufshcd_get_uic_cmd_result(hba);
 	uic_cmd->argument3 = ufshcd_get_dme_attr_val(hba);
 
-	printf("Sent successfully\n");
+	debug("Sent successfully\n");
 
 	return 0;
 }
@@ -312,7 +317,7 @@ int ufshcd_dme_set_attr(struct ufs_hba *hba, u32 attr_sel, u8 attr_set,
 		/* for peer attributes we retry upon failure */
 		ret = ufshcd_send_uic_cmd(hba, &uic_cmd);
 		if (ret)
-			dev_info(hba->dev, "%s: attr-id 0x%x val 0x%x error code %d\n",
+			dev_dbg(hba->dev, "%s: attr-id 0x%x val 0x%x error code %d\n",
 				set, UIC_GET_ATTR_ID(attr_sel), mib_val, ret);
 	} while (ret && peer && --retries);
 
@@ -412,7 +417,7 @@ static int ufshcd_dme_link_startup(struct ufs_hba *hba)
 
 	ret = ufshcd_send_uic_cmd(hba, &uic_cmd);
 	if (ret)
-		dev_err(hba->dev,
+		dev_dbg(hba->dev,
 			"dme-link-startup: error code %d\n", ret);
 	return ret;
 }
@@ -431,7 +436,6 @@ static inline void ufshcd_disable_intr_aggr(struct ufs_hba *hba)
  */
 static inline int ufshcd_get_lists_status(u32 reg)
 {
-	printf("%s: read value=0x%x from reg UFS_MEM_HCS\n", __func__, readl(0x1D84030));
 	return !((reg & UFSHCD_STATUS_READY) == UFSHCD_STATUS_READY);
 }
 
@@ -442,7 +446,6 @@ static inline int ufshcd_get_lists_status(u32 reg)
  */
 static void ufshcd_enable_run_stop_reg(struct ufs_hba *hba)
 {
-	printf("%s: Entered function\n", __func__);
 	ufshcd_writel(hba, UTP_TASK_REQ_LIST_RUN_STOP_BIT,
 		      REG_UTP_TASK_REQ_LIST_RUN_STOP);
 	ufshcd_writel(hba, UTP_TRANSFER_REQ_LIST_RUN_STOP_BIT,
@@ -457,7 +460,6 @@ static void ufshcd_enable_intr(struct ufs_hba *hba, u32 intrs)
 	u32 set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
 	u32 rw;
 
-	printf("%s: Entered function\n", __func__);
 	if (hba->version == UFSHCI_VERSION_10) {
 		rw = set & INTERRUPT_MASK_RW_VER_10;
 		set = rw | ((set ^ intrs) & intrs);
@@ -485,7 +487,6 @@ static int ufshcd_make_hba_operational(struct ufs_hba *hba)
 	int err = 0;
 	u32 reg;
 
-	printf("%s: Entered function\n", __func__);
 	/* Enable required interrupts */
 	ufshcd_enable_intr(hba, UFSHCD_ENABLE_INTRS);
 
@@ -521,7 +522,6 @@ static int ufshcd_make_hba_operational(struct ufs_hba *hba)
 		goto out;
 	}
 
-	wmb();
 out:
 	return err;
 }
@@ -553,43 +553,33 @@ link_startup:
 		 * but we can't be sure if the link is up until link startup
 		 * succeeds. So reset the local Uni-Pro and try again.
 		 */
-		if (ret && retries && ufshcd_hba_enable(hba)) {
-			dev_err(hba->dev, "%s: DME link lost\n", __func__);
+		if (ret && ufshcd_hba_enable(hba))
 			goto out;
-		}
 	} while (ret && retries--);
 
-	if (ret) {
+	if (ret)
 		/* failed to get the link up... retire */
-		dev_err(hba->dev, "%s: failed to get the link up... retire\n", __func__);
 		goto out;
-	}
 
 	if (link_startup_again) {
 		link_startup_again = false;
 		retries = DME_LINKSTARTUP_RETRIES;
-		dev_err(hba->dev, "%s: trying link startup again\n", __func__);
 		goto link_startup;
 	}
 
 	/* Mark that link is up in PWM-G1, 1-lane, SLOW-AUTO mode */
 	ufshcd_init_pwr_info(hba);
 
-	dev_err(hba->dev, "%s: trying to check for broken LCC\n", __func__);
 	if (hba->quirks & UFSHCD_QUIRK_BROKEN_LCC) {
 		ret = ufshcd_disable_device_tx_lcc(hba);
-		if (ret) {
-			dev_err(hba->dev, "%s: Disable TX LCC failed\n", __func__);
+		if (ret)
 			goto out;
-		}
 	}
 
 	/* Include any host controller configuration via UIC commands */
 	ret = ufshcd_ops_link_startup_notify(hba, POST_CHANGE);
-	if (ret) {
-		dev_err(hba->dev, "%s: link startup notify (POST CHANGE) failed\n", __func__);
+	if (ret)
 		goto out;
-	}
 
 	/* Clear UECPA once due to LINERESET has happened during LINK_STARTUP */
 	ufshcd_readl(hba, REG_UIC_ERROR_CODE_PHY_ADAPTER_LAYER);
@@ -722,11 +712,7 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 	/* Allocate one Transfer Request Descriptor
 	 * Should be aligned to 1k boundary.
 	 */
-#ifdef CONFIG_SYS_NONCACHED_MEMORY
-	hba->utrdl = (struct utp_transfer_req_desc *)noncached_alloc(sizeof(struct utp_transfer_req_desc), 1024);
-#else
 	hba->utrdl = memalign(1024, sizeof(struct utp_transfer_req_desc));
-#endif
 	if (!hba->utrdl) {
 		dev_err(hba->dev, "Transfer Descriptor memory allocation failed\n");
 		return -ENOMEM;
@@ -735,11 +721,7 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 	/* Allocate one Command Descriptor
 	 * Should be aligned to 1k boundary.
 	 */
-#ifdef CONFIG_SYS_NONCACHED_MEMORY
-	hba->ucdl = (struct utp_transfer_cmd_desc *)noncached_alloc(sizeof(struct utp_transfer_cmd_desc), 1024);
-#else
 	hba->ucdl = memalign(1024, sizeof(struct utp_transfer_cmd_desc));
-#endif
 	if (!hba->ucdl) {
 		dev_err(hba->dev, "Command descriptor memory allocation failed\n");
 		return -ENOMEM;
@@ -789,13 +771,29 @@ static inline u8 ufshcd_get_upmcrs(struct ufs_hba *hba)
 }
 
 /**
+ * ufshcd_cache_flush_and_invalidate - Flush and invalidate cache
+ *
+ * Flush and invalidate cache in aligned address..address+size range.
+ * The invalidation is in place to avoid stale data in cache.
+ */
+static void ufshcd_cache_flush_and_invalidate(void *addr, unsigned long size)
+{
+	uintptr_t aaddr = (uintptr_t)addr & ~(ARCH_DMA_MINALIGN - 1);
+	unsigned long asize = ALIGN(size, ARCH_DMA_MINALIGN);
+
+	flush_dcache_range(aaddr, aaddr + asize);
+	invalidate_dcache_range(aaddr, aaddr + asize);
+}
+
+/**
  * ufshcd_prepare_req_desc_hdr() - Fills the requests header
  * descriptor according to request
  */
-static void ufshcd_prepare_req_desc_hdr(struct ufs_hba *hba, struct utp_transfer_req_desc *req_desc,
+static void ufshcd_prepare_req_desc_hdr(struct ufs_hba *hba,
 					u32 *upiu_flags,
 					enum dma_data_direction cmd_dir)
 {
+	struct utp_transfer_req_desc *req_desc = hba->utrdl;
 	u32 data_direction;
 	u32 dword_0;
 
@@ -831,12 +829,7 @@ static void ufshcd_prepare_req_desc_hdr(struct ufs_hba *hba, struct utp_transfer
 
 	req_desc->prd_table_length = 0;
 
-#ifndef CONFIG_SYS_NONCACHED_MEMORY
-	flush_dcache_range((unsigned long)req_desc, (unsigned long)(req_desc + ROUND(sizeof(struct utp_transfer_req_desc), CONFIG_SYS_CACHELINE_SIZE)));
-	flush_dcache_range((unsigned long)hba->utrdl, (unsigned long)(hba->utrdl + ROUND(sizeof(struct utp_transfer_req_desc), CONFIG_SYS_CACHELINE_SIZE)));
-	flush_dcache_range((unsigned long)hba->ucdl, (unsigned long)(hba->ucdl + ROUND(sizeof(struct utp_transfer_cmd_desc), CONFIG_SYS_CACHELINE_SIZE)));
-#endif
-	mb();
+	ufshcd_cache_flush_and_invalidate(req_desc, sizeof(*req_desc));
 }
 
 static void ufshcd_prepare_utp_query_req_upiu(struct ufs_hba *hba,
@@ -865,10 +858,15 @@ static void ufshcd_prepare_utp_query_req_upiu(struct ufs_hba *hba,
 	memcpy(&ucd_req_ptr->qr, &query->request.upiu_req, QUERY_OSF_SIZE);
 
 	/* Copy the Descriptor */
-	if (query->request.upiu_req.opcode == UPIU_QUERY_OPCODE_WRITE_DESC)
+	if (query->request.upiu_req.opcode == UPIU_QUERY_OPCODE_WRITE_DESC) {
 		memcpy(ucd_req_ptr + 1, query->descriptor, len);
+		ufshcd_cache_flush_and_invalidate(ucd_req_ptr, 2 * sizeof(*ucd_req_ptr));
+	} else {
+		ufshcd_cache_flush_and_invalidate(ucd_req_ptr, sizeof(*ucd_req_ptr));
+	}
 
 	memset(hba->ucd_rsp_ptr, 0, sizeof(struct utp_upiu_rsp));
+	ufshcd_cache_flush_and_invalidate(hba->ucd_rsp_ptr, sizeof(*hba->ucd_rsp_ptr));
 }
 
 static inline void ufshcd_prepare_utp_nop_upiu(struct ufs_hba *hba)
@@ -878,22 +876,16 @@ static inline void ufshcd_prepare_utp_nop_upiu(struct ufs_hba *hba)
 	memset(ucd_req_ptr, 0, sizeof(struct utp_upiu_req));
 
 	/* command descriptor fields */
-	/*ucd_req_ptr->header.dword_0 =
-			UPIU_HEADER_DWORD(UPIU_TRANSACTION_NOP_OUT, 0, 0, 0x1f);*/
 	ucd_req_ptr->header.dword_0 =
 			UPIU_HEADER_DWORD(UPIU_TRANSACTION_NOP_OUT, 0, 0, TASK_TAG);
 	/* clear rest of the fields of basic header */
 	ucd_req_ptr->header.dword_1 = 0;
 	ucd_req_ptr->header.dword_2 = 0;
 
-#ifndef CONFIG_SYS_NONCACHED_MEMORY
-	flush_dcache_range((unsigned long)ucd_req_ptr, (unsigned long)(ucd_req_ptr + ROUND(sizeof(struct utp_upiu_req), CONFIG_SYS_CACHELINE_SIZE)));
-	flush_dcache_range((unsigned long)hba->utrdl, (unsigned long)(hba->utrdl + ROUND(sizeof(struct utp_transfer_req_desc), CONFIG_SYS_CACHELINE_SIZE)));
-	flush_dcache_range((unsigned long)hba->ucdl, (unsigned long)(hba->ucdl + ROUND(sizeof(struct utp_transfer_cmd_desc), CONFIG_SYS_CACHELINE_SIZE)));
-#endif
-	mb();
-
 	memset(hba->ucd_rsp_ptr, 0, sizeof(struct utp_upiu_rsp));
+
+	ufshcd_cache_flush_and_invalidate(ucd_req_ptr, sizeof(*ucd_req_ptr));
+	ufshcd_cache_flush_and_invalidate(hba->ucd_rsp_ptr, sizeof(*hba->ucd_rsp_ptr));
 }
 
 /**
@@ -905,11 +897,10 @@ static int ufshcd_comp_devman_upiu(struct ufs_hba *hba,
 {
 	u32 upiu_flags;
 	int ret = 0;
-	struct utp_transfer_req_desc *req_desc = hba->utrdl;
 
 	hba->dev_cmd.type = cmd_type;
 
-	ufshcd_prepare_req_desc_hdr(hba, req_desc, &upiu_flags, DMA_NONE);
+	ufshcd_prepare_req_desc_hdr(hba, &upiu_flags, DMA_NONE);
 	switch (cmd_type) {
 	case DEV_CMD_TYPE_QUERY:
 		ufshcd_prepare_utp_query_req_upiu(hba, upiu_flags);
@@ -929,32 +920,14 @@ static int ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	unsigned long start;
 	u32 intr_status;
 	u32 enabled_intr_status;
-	int ret;
-	static bool first = true;
-
-	printf("%s: Entered function\n", __func__);
 
 	ufshcd_writel(hba, 1 << task_tag, REG_UTP_TRANSFER_REQ_DOOR_BELL);
+
+	/* Make sure doorbell reg is updated before reading interrupt status */
 	wmb();
 
-	//Dump regs
-	if (first) {
-		ret = ufshcd_dump_regs(hba, 0, UFSHCI_REG_SPACE_SIZE, "host_regs: ");
-		if (ret < 0)
-			printf("ufshcd_dump_regs failed: %d\n", ret);
-
-		ufshcd_ops_dbg_register_dump(hba);
-		ufshcd_print_tr(hba, task_tag, true);
-
-		first = false;
-	}
-
-	mb();
-
-	printf("%s: Writing to REG_UTP_TRANSFER_REQ_DOOR_BELL ok\n", __func__);
 	start = get_timer(0);
 	do {
-		printf("%s: Reading from INTR STATUS reg\n", __func__);
 		intr_status = ufshcd_readl(hba, REG_INTERRUPT_STATUS);
 		enabled_intr_status = intr_status & hba->intr_mask;
 		ufshcd_writel(hba, intr_status, REG_INTERRUPT_STATUS);
@@ -966,7 +939,8 @@ static int ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 			return -ETIMEDOUT;
 		}
 
-		if (enabled_intr_status & UFSHCD_ERROR_MASK) {
+		if (enabled_intr_status & UFSHCD_ERROR_MASK &&
+			       !(enabled_intr_status & UIC_ERROR)) {
 			dev_err(hba->dev, "Error in status:%08x\n",
 				enabled_intr_status);
 
@@ -991,7 +965,9 @@ static inline int ufshcd_get_req_rsp(struct utp_upiu_rsp *ucd_rsp_ptr)
  */
 static inline int ufshcd_get_tr_ocs(struct ufs_hba *hba)
 {
-	return le32_to_cpu(hba->utrdl->header.dword_2) & MASK_OCS;
+	struct utp_transfer_req_desc *req_desc = hba->utrdl;
+
+	return le32_to_cpu(req_desc->header.dword_2) & MASK_OCS;
 }
 
 static inline int ufshcd_get_rsp_upiu_result(struct utp_upiu_rsp *ucd_rsp_ptr)
@@ -1054,24 +1030,20 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba, enum dev_cmd_type cmd_type,
 	int err;
 	int resp;
 
-	printf("%s: Entered function\n", __func__);
 	err = ufshcd_comp_devman_upiu(hba, cmd_type);
 	if (err)
 		return err;
 
-	printf("%s: Sending command\n", __func__);
 	err = ufshcd_send_command(hba, TASK_TAG);
 	if (err)
 		return err;
 
-	printf("%s: get tr ocs\n", __func__);
 	err = ufshcd_get_tr_ocs(hba);
 	if (err) {
 		dev_err(hba->dev, "Error in OCS:%d\n", err);
 		return -EINVAL;
 	}
 
-	printf("%s: get resp\n", __func__);
 	resp = ufshcd_get_req_rsp(hba->ucd_rsp_ptr);
 	switch (resp) {
 	case UPIU_TRANSACTION_NOP_IN:
@@ -1093,7 +1065,6 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba, enum dev_cmd_type cmd_type,
 			__func__, resp);
 	}
 
-	printf("%s: Exiting successfully\n", __func__);
 	return err;
 }
 
@@ -1545,6 +1516,8 @@ void ufshcd_prepare_utp_scsi_cmd_upiu(struct ufs_hba *hba,
 	memcpy(ucd_req_ptr->sc.cdb, pccb->cmd, cdb_len);
 
 	memset(hba->ucd_rsp_ptr, 0, sizeof(struct utp_upiu_rsp));
+	ufshcd_cache_flush_and_invalidate(ucd_req_ptr, sizeof(*ucd_req_ptr));
+	ufshcd_cache_flush_and_invalidate(hba->ucd_rsp_ptr, sizeof(*hba->ucd_rsp_ptr));
 }
 
 static inline void prepare_prdt_desc(struct ufshcd_sg_entry *entry,
@@ -1559,6 +1532,7 @@ static void prepare_prdt_table(struct ufs_hba *hba, struct scsi_cmd *pccb)
 {
 	struct utp_transfer_req_desc *req_desc = hba->utrdl;
 	struct ufshcd_sg_entry *prd_table = hba->ucd_prdt_ptr;
+	uintptr_t aaddr = (uintptr_t)(pccb->pdata) & ~(ARCH_DMA_MINALIGN - 1);
 	ulong datalen = pccb->datalen;
 	int table_length;
 	u8 *buf;
@@ -1566,8 +1540,18 @@ static void prepare_prdt_table(struct ufs_hba *hba, struct scsi_cmd *pccb)
 
 	if (!datalen) {
 		req_desc->prd_table_length = 0;
+		ufshcd_cache_flush_and_invalidate(req_desc, sizeof(*req_desc));
 		return;
 	}
+
+	if (pccb->dma_dir == DMA_TO_DEVICE) {	/* Write to device */
+		flush_dcache_range(aaddr, aaddr +
+				   ALIGN(datalen, ARCH_DMA_MINALIGN));
+	}
+
+	/* In any case, invalidate cache to avoid stale data in it. */
+	invalidate_dcache_range(aaddr, aaddr +
+				ALIGN(datalen, ARCH_DMA_MINALIGN));
 
 	table_length = DIV_ROUND_UP(pccb->datalen, MAX_PRDT_ENTRY);
 	buf = pccb->pdata;
@@ -1582,17 +1566,18 @@ static void prepare_prdt_table(struct ufs_hba *hba, struct scsi_cmd *pccb)
 	prepare_prdt_desc(&prd_table[table_length - i - 1], buf, datalen - 1);
 
 	req_desc->prd_table_length = table_length;
+	ufshcd_cache_flush_and_invalidate(prd_table, sizeof(*prd_table) * table_length);
+	ufshcd_cache_flush_and_invalidate(req_desc, sizeof(*req_desc));
 }
 
 static int ufs_scsi_exec(struct udevice *scsi_dev, struct scsi_cmd *pccb)
 {
 	struct ufs_hba *hba = dev_get_uclass_priv(scsi_dev->parent);
-	struct utp_transfer_req_desc *req_desc = hba->utrdl;
 	u32 upiu_flags;
 	int ocs, result = 0;
 	u8 scsi_status;
 
-	ufshcd_prepare_req_desc_hdr(hba, req_desc, &upiu_flags, pccb->dma_dir);
+	ufshcd_prepare_req_desc_hdr(hba, &upiu_flags, pccb->dma_dir);
 	ufshcd_prepare_utp_scsi_cmd_upiu(hba, pccb, upiu_flags);
 	prepare_prdt_table(hba, pccb);
 
@@ -1890,14 +1875,13 @@ static int ufshcd_verify_dev_init(struct ufs_hba *hba)
 	int retries;
 	int err;
 
-	printf("%s: Entered function\n", __func__);
 	for (retries = NOP_OUT_RETRIES; retries > 0; retries--) {
 		err = ufshcd_exec_dev_cmd(hba, DEV_CMD_TYPE_NOP,
 					  NOP_OUT_TIMEOUT);
 		if (!err || err == -ETIMEDOUT)
 			break;
 
-		dev_err(hba->dev, "%s: error %d retrying\n", __func__, err);
+		dev_dbg(hba->dev, "%s: error %d retrying\n", __func__, err);
 	}
 
 	if (err)
@@ -1915,7 +1899,6 @@ static int ufshcd_complete_dev_init(struct ufs_hba *hba)
 	int err;
 	bool flag_res = 1;
 
-	printf("%s: Entered function\n", __func__);
 	err = ufshcd_query_flag_retry(hba, UPIU_QUERY_OPCODE_SET_FLAG,
 				      QUERY_FLAG_IDN_FDEVICEINIT, NULL);
 	if (err) {
@@ -1996,7 +1979,7 @@ int ufs_start(struct ufs_hba *hba)
 			return ret;
 		}
 
-		printf("Device at %s up at:", hba->dev->name);
+		printf("UFS Device %s is up!\n", hba->dev->name);
 		ufshcd_print_pwr_info(hba);
 	}
 
@@ -2022,8 +2005,6 @@ int ufshcd_probe(struct udevice *ufs_dev, struct ufs_hba_ops *hba_ops)
 	hba->dev = ufs_dev;
 	hba->ops = hba_ops;
 	hba->mmio_base = dev_read_addr_ptr(ufs_dev);
-
-	printf("%s: hba->mmio_base = 0x%p\n", __func__,hba->mmio_base);
 
 	/* Set descriptor lengths to specification defaults */
 	ufshcd_def_desc_sizes(hba);
@@ -2058,6 +2039,7 @@ int ufshcd_probe(struct udevice *ufs_dev, struct ufs_hba_ops *hba_ops)
 	ufshcd_writel(hba, ufshcd_readl(hba, REG_INTERRUPT_STATUS),
 		      REG_INTERRUPT_STATUS);
 	ufshcd_writel(hba, 0, REG_INTERRUPT_ENABLE);
+
 	mb();
 
 	err = ufshcd_hba_enable(hba);
