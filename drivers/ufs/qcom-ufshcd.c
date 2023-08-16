@@ -20,34 +20,9 @@
 #include "ufs.h"
 #include "ufs-qcom.h"
 
-#define MCQ_QCFGPTR_MASK	GENMASK(7, 0)
-#define MCQ_QCFGPTR_UNIT	0x200
-#define MCQ_SQATTR_OFFSET(c) \
-	((((c) >> 16) & MCQ_QCFGPTR_MASK) * MCQ_QCFGPTR_UNIT)
-#define MCQ_QCFG_SIZE	0x40
-
 #define MSEC_PER_SEC	(1000L)
 #define USEC_PER_SEC	(1000000L)
 #define NSEC_PER_SEC	(1000000000L)
-
-static unsigned int writel_count = 0;
-static unsigned int readl_count = 0;
-
-enum {
-	TSTBUS_UAWM,
-	TSTBUS_UARM,
-	TSTBUS_TXUC,
-	TSTBUS_RXUC,
-	TSTBUS_DFC,
-	TSTBUS_TRLUT,
-	TSTBUS_TMRLUT,
-	TSTBUS_OCSC,
-	TSTBUS_UTP_HCI,
-	TSTBUS_COMBINED,
-	TSTBUS_WRAPPER,
-	TSTBUS_UNIPRO,
-	TSTBUS_MAX,
-};
 
 static int ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(struct ufs_hba *hba,
 						       u32 clk_cycles);
@@ -58,11 +33,9 @@ static int ufs_qcom_clk_get(struct udevice *dev,
 	struct clk *clk;
 	int err = 0;
 
-	printf("%s: Entered function\n", __func__);
 	clk = devm_clk_get(dev, name);
 	if (!IS_ERR(clk)) {
 		*clk_out = clk;
-		printf("%s: Exiting function successfully\n", __func__);
 		return 0;
 	}
 
@@ -84,7 +57,6 @@ static int ufs_qcom_clk_enable(struct udevice *dev,
 {
 	int err = 0;
 
-	printf("%s: Entered function\n", __func__);
 	err = clk_prepare_enable(clk);
 	if (err)
 		dev_err(dev, "%s: %s enable failed %d\n", __func__, name, err);
@@ -97,7 +69,6 @@ static int ufs_qcom_enable_lane_clks(struct ufs_qcom_priv *priv)
 	int err;
 	struct udevice *dev = priv->hba->dev;
 
-	printf("%s: Entered function\n", __func__);
 	if (priv->is_lane_clks_enabled)
 		return 0;
 
@@ -118,7 +89,6 @@ static int ufs_qcom_enable_lane_clks(struct ufs_qcom_priv *priv)
 
 	priv->is_lane_clks_enabled = true;
 
-	printf("%s: Exiting function with success\n", __func__);
 	return 0;
 
 disable_tx_l0:
@@ -126,7 +96,6 @@ disable_tx_l0:
 disable_rx_l0:
 	clk_disable_unprepare(priv->rx_l0_sync_clk);
 
-	printf("%s: Exiting function with error:%d\n", __func__, err);
 	return err;
 }
 
@@ -135,7 +104,6 @@ static int ufs_qcom_init_lane_clks(struct ufs_qcom_priv *priv)
 	int err = 0;
 	struct udevice *dev = priv->hba->dev;
 
-	printf("%s: Entered function\n", __func__);
 	err = ufs_qcom_clk_get(dev, "rx_lane0_sync_clk",
 					&priv->rx_l0_sync_clk, false);
 	if (err)
@@ -151,7 +119,6 @@ static int ufs_qcom_init_lane_clks(struct ufs_qcom_priv *priv)
 	if (err)
 		return err;
 
-	printf("%s: Exiting function with success\n", __func__);
 	return 0;
 }
 
@@ -160,7 +127,6 @@ static int ufs_qcom_enable_core_clks(struct ufs_qcom_priv *priv)
 	int err;
 	struct udevice *dev = priv->hba->dev;
 
-	printf("%s: Entered function\n", __func__);
 	if (priv->is_core_clks_enabled)
 		return 0;
 
@@ -182,7 +148,6 @@ static int ufs_qcom_enable_core_clks(struct ufs_qcom_priv *priv)
 
 	priv->is_core_clks_enabled = true;
 
-	printf("%s: Exiting function with success\n", __func__);
 	return 0;
 
 disable_iface_clk:
@@ -192,7 +157,6 @@ disable_bus_aggr_clk:
 disable_core_clk:
 	clk_disable_unprepare(priv->core_clk);
 
-	printf("%s: Exiting function with error, ret = %d\n", __func__, err);
 	return err;
 }
 
@@ -201,7 +165,6 @@ static int ufs_qcom_init_core_clks(struct ufs_qcom_priv *priv)
 	int err = 0;
 	struct udevice *dev = priv->hba->dev;
 
-	printf("%s: Entered function\n", __func__);
 	err = ufs_qcom_clk_get(dev, "core_clk",
 					&priv->core_clk, false);
 	if (err)
@@ -220,19 +183,13 @@ static int ufs_qcom_init_core_clks(struct ufs_qcom_priv *priv)
 	if (err)
 		return err;
 
-#if 0
-	err = ufs_qcom_clk_get(dev, "ref_clk", &priv->ref_clk, true); /* optional */
-	if (err)
-		return err;
-#endif
+	/* ref_clk is optional */
 
-	printf("%s: Exiting function with success\n", __func__);
 	return 0;
 }
 
 static void ufs_qcom_select_unipro_mode(struct ufs_qcom_priv *priv)
 {
-	printf("%s: Entered function\n", __func__);
 	ufshcd_rmwl(priv->hba, QUNIPRO_SEL,
 		   ufs_qcom_cap_qunipro(priv) ? QUNIPRO_SEL : 0,
 		   REG_UFS_CFG1);
@@ -242,7 +199,6 @@ static void ufs_qcom_select_unipro_mode(struct ufs_qcom_priv *priv)
 
 	/* make sure above configuration is applied before we return */
 	mb();
-	printf("%s: Exiting function with success\n", __func__);
 }
 
 /*
@@ -253,7 +209,6 @@ static int ufs_qcom_reset(struct ufs_hba *hba)
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
 	int ret = 0;
 
-	printf("%s: Entered function\n", __func__);
 	ret = reset_assert(&priv->core_reset);
 	if (ret) {
 		dev_err(hba->dev, "%s: core_reset assert failed, err = %d\n",
@@ -275,7 +230,6 @@ static int ufs_qcom_reset(struct ufs_hba *hba)
 
 	udelay(1100);
 
-	printf("%s: Exiting function with success\n", __func__);
 	return 0;
 }
 
@@ -283,8 +237,6 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 {
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
 
-	printf("%s: writel: Entering function\n", __func__);
-	
 	if (priv->hw_ver.major >= 0x2) {
 		priv->caps = UFS_QCOM_CAP_QUNIPRO |
 			     UFS_QCOM_CAP_RETAIN_SEC_CFG_AFTER_PWR_COLLAPSE;
@@ -304,7 +256,6 @@ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
 {
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
 
-	printf("%s: Entered function\n", __func__);
 	if (priv->hw_ver.major == 0x01) {
 		hba->quirks |= UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS
 			    | UFSHCD_QUIRK_BROKEN_PA_RXHSUNTERMCAP
@@ -328,13 +279,12 @@ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
 
 	if (priv->hw_ver.major > 0x3)
 		hba->quirks |= UFSHCD_QUIRK_REINIT_AFTER_MAX_GEAR_SWITCH;
-	printf("%s: Exiting function with success\n", __func__);
 }
 
 static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_hba *hba, bool enable)
 {
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
-	
+
 	if (priv->dev_ref_clk_ctrl_mmio &&
 	    (enable ^ priv->is_dev_ref_clk_enabled)) {
 		u32 temp = readl_relaxed(priv->dev_ref_clk_ctrl_mmio);
@@ -350,13 +300,10 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_hba *hba, bool enable)
 		 * sure that device ref_clk is active for specific time after
 		 * hibern8 enter.
 		 */
-		if (!enable) {
+		if (!enable)
 			udelay(10);
-		}
 
 		writel_relaxed(temp, priv->dev_ref_clk_ctrl_mmio);
-		printf("%s: writel_cnt=%u, reg=0x%p, val=0x%x\n",
-			__func__, writel_count++, priv->dev_ref_clk_ctrl_mmio, temp);
 
 		/*
 		 * Make sure the write to ref_clk reaches the destination and
@@ -387,7 +334,6 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_hba *hba, bool enable)
 static int ufs_qcom_setup_clocks(struct ufs_hba *hba, bool on,
 				 enum ufs_notify_change_status status)
 {
-	printf("%s: Entered function\n", __func__);
 	switch (status) {
 	case PRE_CHANGE:
 		if (!on) {
@@ -403,7 +349,6 @@ static int ufs_qcom_setup_clocks(struct ufs_hba *hba, bool on,
 		break;
 	}
 
-	printf("%s: Exiting function with success\n", __func__);
 	return 0;
 }
 
@@ -413,7 +358,6 @@ static int ufs_qcom_power_up_sequence(struct ufs_hba *hba)
 	struct phy phy;
 	int ret;
 
-	printf("%s: Entered function\n", __func__);
 	/* Reset UFS Host Controller and PHY */
 	ret = ufs_qcom_reset(hba);
 	if (ret)
@@ -446,14 +390,11 @@ static int ufs_qcom_power_up_sequence(struct ufs_hba *hba)
 
 	ufs_qcom_select_unipro_mode(priv);
 
-	printf("%s: Exiting function with success\n", __func__);
-
 	return 0;
 
 out_disable_phy:
 	generic_phy_exit(&phy);
 
-	printf("%s: Exiting function with error, ret = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -462,7 +403,6 @@ static int ufs_qcom_check_hibern8(struct ufs_hba *hba)
 	int err, retry_count = 50;
 	u32 tx_fsm_val = 0;
 
-	printk("%s: Entering function\n", __func__);
 	do {
 		err = ufshcd_dme_get(hba,
 				UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
@@ -510,11 +450,6 @@ static void ufs_qcom_enable_hw_clk_gating(struct ufs_hba *hba)
 		ufshcd_readl(hba, REG_UFS_CFG2) | REG_UFS_CFG2_CGC_EN_ALL,
 		REG_UFS_CFG2);
 
-	printf("%s: writel_cnt=%u, reg=0x%p, val=0x%lx\n",
-		__func__, writel_count++, (hba->mmio_base + REG_UFS_CFG2),
-		(ufshcd_readl(hba, REG_UFS_CFG2) | REG_UFS_CFG2_CGC_EN_ALL));
-
-
 	/* Ensure that HW clock gating is enabled before next operations */
 	mb();
 }
@@ -525,7 +460,6 @@ static int ufs_qcom_hce_enable_notify(struct ufs_hba *hba,
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
 	int err = 0;
 
-	printf("%s: Entered function\n", __func__);
 	switch (status) {
 	case PRE_CHANGE:
 		ufs_qcom_power_up_sequence(hba);
@@ -541,16 +475,6 @@ static int ufs_qcom_hce_enable_notify(struct ufs_hba *hba,
 		err = ufs_qcom_enable_lane_clks(priv);
 		if (err < 0)
 			return err;
-
-#if 0
-		err = clk_set_rate(priv->core_clk, 37500000);
-		if (err < 0)
-			return err;
-
-		err = clk_set_rate(priv->core_clk_unipro, 37500000);
-		if (err < 0)
-			return err;
-#endif
 		break;
 	case POST_CHANGE:
 		/* check if UFS PHY moved from DISABLED to HIBERN8 */
@@ -562,8 +486,7 @@ static int ufs_qcom_hce_enable_notify(struct ufs_hba *hba,
 		err = -EINVAL;
 		break;
 	}
-	
-	printf("%s: Exiting function with success, err:%d\n", __func__, err);
+
 	return err;
 }
 
@@ -598,8 +521,6 @@ static int ufs_qcom_cfg_timers(struct ufs_hba *hba, u32 gear,
 		{UFS_HS_G3, 0x92},
 	};
 
-	printf("%s: Entered function\n", __func__);
-	
 	/*
 	 * The Qunipro controller does not use following registers:
 	 * SYS1CLK_1US_REG, TX_SYMBOL_CLK_1US_REG, CLK_NS_REG &
@@ -607,10 +528,8 @@ static int ufs_qcom_cfg_timers(struct ufs_hba *hba, u32 gear,
 	 * But UTP controller uses SYS1CLK_1US_REG register for Interrupt
 	 * Aggregation logic.
 	*/
-	if (ufs_qcom_cap_qunipro(priv)) {
-		printf("%s: Qunipro controller.. not configuring core_clk\n", __func__);
+	if (ufs_qcom_cap_qunipro(priv))
 		return 0;
-	}
 
 	if (gear == 0) {
 		dev_err(hba->dev, "%s: invalid gear = %d\n", __func__, gear);
@@ -618,7 +537,7 @@ static int ufs_qcom_cfg_timers(struct ufs_hba *hba, u32 gear,
 	}
 
 	core_clk_rate = clk_get_rate(priv->core_clk);
-	
+
 	/* If frequency is smaller than 1MHz, set to 1MHz */
 	if (core_clk_rate < DEFAULT_CLK_RATE_HZ)
 		core_clk_rate = DEFAULT_CLK_RATE_HZ;
@@ -706,8 +625,6 @@ static int ufs_qcom_cfg_timers(struct ufs_hba *hba, u32 gear,
 		mb();
 	}
 
-	printf("%s: Exiting function with success\n", __func__);
-
 	return 0;
 }
 
@@ -717,7 +634,6 @@ static int ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(struct ufs_hba *hba,
 	int err;
 	u32 core_clk_ctrl_reg;
 
-	printf("%s: Entered function\n", __func__);
 	if (clk_cycles > DME_VS_CORE_CLK_CTRL_MAX_CORE_CLK_1US_CYCLES_MASK)
 		return -EINVAL;
 
@@ -733,7 +649,6 @@ static int ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(struct ufs_hba *hba,
 	/* Clear CORE_CLK_DIV_EN */
 	core_clk_ctrl_reg &= ~DME_VS_CORE_CLK_CTRL_CORE_CLK_DIV_EN_BIT;
 
-	printf("%s: Exiting function with success\n", __func__);
 	return ufshcd_dme_set(hba,
 			    UIC_ARG_MIB(DME_VS_CORE_CLK_CTRL),
 			    core_clk_ctrl_reg);
@@ -761,7 +676,6 @@ static int ufs_qcom_link_startup_notify(struct ufs_hba *hba,
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
 	int err = 0;
 
-	printf("%s: Entered function\n", __func__);
 	switch (status) {
 	case PRE_CHANGE:
 		if (ufs_qcom_cfg_timers(hba, UFS_PWM_G1, SLOWAUTO_MODE,
@@ -776,8 +690,8 @@ static int ufs_qcom_link_startup_notify(struct ufs_hba *hba,
 			 * set unipro core clock cycles to 150 & clear clock
 			 * divider
 			 */
-			/*err = ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(hba,
-									  150);*/
+			err = ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(hba,
+									  150);
 
 		/*
 		 * Some UFS devices (and may be host) have issues if LCC is
@@ -786,17 +700,14 @@ static int ufs_qcom_link_startup_notify(struct ufs_hba *hba,
 		 * and device TX LCC are disabled once link startup is
 		 * completed.
 		 */
-		if (ufshcd_get_local_unipro_ver(hba) != UFS_UNIPRO_VER_1_41) {
-			printf("%s: Disabling host TX LCC as not UFS_UNIPRO_VER_1_41\n", __func__);
+		if (ufshcd_get_local_unipro_ver(hba) != UFS_UNIPRO_VER_1_41)
 			err = ufshcd_dme_set(hba, UIC_ARG_MIB(PA_LOCAL_TX_LCC_ENABLE), 0);
-		}
 
 		break;
 	default:
 		break;
 	}
 
-	printf("%s: Exiting function with success\n", __func__);
 	return err;
 }
 
@@ -814,13 +725,12 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
 	int err;
 
-	printf("%s: Entered function\n", __func__);
 	priv->hba = hba;
 
 	/* setup clocks */
-	//ufs_qcom_setup_clocks(hba, true, PRE_CHANGE);
-	//ufs_qcom_setup_clocks(hba, true, POST_CHANGE);
-	
+	ufs_qcom_setup_clocks(hba, true, PRE_CHANGE);
+	ufs_qcom_setup_clocks(hba, true, POST_CHANGE);
+
 	ufs_qcom_get_controller_revision(hba, &priv->hw_ver.major,
 		&priv->hw_ver.minor, &priv->hw_ver.step);
 	dev_info(hba->dev, "Qcom UFS HC version: %d.%d.%d\n", priv->hw_ver.major,
@@ -851,14 +761,9 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_advertise_quirks(hba);
 	ufs_qcom_setup_clocks(hba, true, POST_CHANGE);
 
-	/*
-	 * Power up the PHY using the minimum supported gear (UFS_HS_G2).
-	 * Switching to max gear will be performed during reinit if supported.
-	 */
-	//priv->hs_gear = UFS_HS_G2;
+	/* Power up the PHY using UFS_HS_G3. */
 	priv->hs_gear = UFS_HS_G3;
 
-	printf("%s: Exiting function with success\n", __func__);
 	return 0;
 }
 
@@ -866,10 +771,12 @@ static void ufshcd_print_clk_freqs(struct ufs_hba *hba)
 {
 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
 
-	dev_err(hba->dev, "clk: %s, rate: %lu\n", "core_clk", clk_get_rate(priv->core_clk));
-	dev_err(hba->dev, "clk: %s, rate: %lu\n", "bus_aggr_clk", clk_get_rate(priv->bus_aggr_clk));
-	dev_err(hba->dev, "clk: %s, rate: %lu\n", "iface_clk", clk_get_rate(priv->iface_clk));
-	dev_err(hba->dev, "clk: %s, rate: %lu\n", "core_clk_unipro", clk_get_rate(priv->core_clk_unipro));
+	dev_info(hba->dev, "clk: %s, rate: %lu\n", "bus_aggr_clk",
+		       clk_get_rate(priv->bus_aggr_clk));
+	dev_info(hba->dev, "clk: %s, rate: %lu\n", "iface_clk",
+		       clk_get_rate(priv->iface_clk));
+	dev_info(hba->dev, "clk: %s, rate: %lu\n", "core_clk_unipro",
+		       clk_get_rate(priv->core_clk_unipro));
 }
 
 static void ufs_qcom_dump_dbg_regs(struct ufs_hba *hba)
@@ -886,8 +793,6 @@ static void ufs_qcom_dump_dbg_regs(struct ufs_hba *hba)
 	reg = ufshcd_readl(hba, REG_UFS_CFG1);
 	reg |= UTP_DBG_RAMS_EN;
 	ufshcd_writel(hba, reg, REG_UFS_CFG1);
-	printk("%s: writel_cnt=%u, reg=0x%pS, val=0x%x\n", __func__,
-		       writel_count++, (hba->mmio_base + REG_UFS_CFG1), reg);
 
 	reg = ufs_qcom_get_debug_reg_offset(priv, UFS_UFS_DBG_RD_EDTL_RAM);
 	ufshcd_dump_regs(hba, reg, 32 * 4, "UFS_UFS_DBG_RD_EDTL_RAM ");
@@ -937,8 +842,6 @@ static int ufs_qcom_probe(struct udevice *dev)
 	struct ufs_qcom_priv *priv = dev_get_priv(dev);
 	int ret;
 
-	printf("%s: Entered function\n", __func__);
-
 	/* get resets */
 	ret = reset_get_by_name(dev, "rst", &priv->core_reset);
 	if (ret) {
@@ -952,7 +855,6 @@ static int ufs_qcom_probe(struct udevice *dev)
 		return ret;
 	}
 
-	printf("%s: Exiting function successfully\n", __func__);
 	return 0;
 }
 
