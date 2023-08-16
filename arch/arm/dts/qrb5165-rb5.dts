@@ -273,8 +273,10 @@
 				reg = <0x0a800000 0xcd00>;
 				snps,dis_u2_susphy_quirk;
 				snps,dis_enblslpm_quirk;
-				phys = <&usb_2_hsphy>, <&usb_2_qmpphy>;
-				phy-names = "usb2-phy", "usb3-phy";
+				//phys = <&usb_2_hsphy>, <&usb_2_qmpphy>;
+				//phy-names = "usb2-phy", "usb3-phy";
+				phys = <&usb_2_hsphy>;
+				phy-names = "usb2-phy";
 				maximum-speed = "super-speed";
 				dr_mode = "host";
 			};
