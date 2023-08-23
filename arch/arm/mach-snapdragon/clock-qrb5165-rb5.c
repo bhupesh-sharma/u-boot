@@ -111,6 +111,31 @@ ulong msm_set_rate(struct clk *clk, ulong rate)
 
 	switch (clk->id) {
 	case GCC_USB30_SEC_MASTER_CLK:
+		writel(0xF8282000, 0x110004);
+writel(0x00070000, 0x110008);
+writel(0x0000022A, 0x11000c);
+writel(0x00000221, 0x110010);
+writel(0x00010000, 0x110014);
+writel(0x00000001, 0x110018);
+writel(0x00000001, 0x11001c);
+writel(0x00000000, 0x110020);
+writel(0x00000105, 0x110024);
+writel(0x00000000, 0x110028);
+writel(0x00000000, 0x11002c);
+writel(0x00000000, 0x110030);
+writel(0x00000000, 0x110038);
+writel(0x00100000, 0x11003c);
+writel(0x00000000, 0x110050);
+writel(0x00000001, 0x110054);
+writel(0x00000001, 0x110058);
+writel(0x00000001, 0x11005c);
+writel(0x00000000, 0x110060);
+writel(0x00000000, 0x110064);
+writel(0x00000000, 0x110068);
+writel(0x00000001, 0x11007c);
+writel(0x00000001, 0x110080);
+		break;
+#if 0
 		writel(0xFFFDDA00, 0x00110004); //GDSC
 		clk_enable_cbc(priv->base + USB30_SEC_MASTER_CBCR);
 		clk_rcg_set_rate_mnd(priv->base, &usb30_master_regs, 4, 0, 0,
@@ -130,9 +155,9 @@ ulong msm_set_rate(struct clk *clk, ulong rate)
 		break;
 	case GCC_USB3_SEC_CLKREF_EN:
 		clk_enable_cbc(priv->base + USB3_SEC_CLKREF_EN);
-		clk_enable_cbc(priv->base + USB3_SEC_PHY_AUX_CBCR);
-		clk_enable_cbc(priv->base + USB3_SEC_PHY_COM_AUX_CBCR);
-		clk_enable_cbc(priv->base + USB3_SEC_PHY_PIPE_CBCR);
+		//clk_enable_cbc(priv->base + USB3_SEC_PHY_AUX_CBCR);
+		//clk_enable_cbc(priv->base + USB3_SEC_PHY_COM_AUX_CBCR);
+		//clk_enable_cbc(priv->base + USB3_SEC_PHY_PIPE_CBCR);
 		//clk_enable_cbc(priv->base + USB3_SEC_PHY_PIPE_MUXR);
 		break;
 
@@ -146,6 +171,7 @@ ulong msm_set_rate(struct clk *clk, ulong rate)
 	case GCC_SDCC2_AHB_CLK:
 		clk_enable_cbc(priv->base + SDCC2_AHB_CBCR);
 		break;
+#endif
 	case GCC_QUPV3_WRAP1_S4_CLK: /* Debug UART */
 		return clk_init_uart(priv, rate);
 	default:
