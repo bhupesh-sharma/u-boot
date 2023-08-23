@@ -177,6 +177,8 @@ static int xhci_start(struct xhci_hcor *hcor)
 	temp = xhci_readl(&hcor->or_usbcmd);
 	printf("Starting the controller: reading or_usbcmd: 0x%x\n", temp);
 	temp |= (CMD_RUN);
+	writel(0x81001808, 0xA60C11c);
+	writel(0x102000, 0xA60C110);
 	xhci_writel(&hcor->or_usbcmd, temp);
 
 	puts("Starting the controller: CMD_RUN issued\n");
