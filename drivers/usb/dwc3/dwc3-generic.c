@@ -132,7 +132,9 @@ static int dwc3_generic_probe(struct udevice *dev,
 	dwc3->regs = priv->base + DWC3_GLOBALS_REGS_START;
 
 
+	printf("%s, Calling dwc3_init..\n", __func__);
 	rc =  dwc3_init(dwc3);
+	printf("%s, After Calling dwc3_init..\n", __func__);
 	if (rc) {
 		unmap_physmem(priv->base, MAP_NOCACHE);
 		return rc;
