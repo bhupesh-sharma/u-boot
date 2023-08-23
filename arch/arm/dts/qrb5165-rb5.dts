@@ -88,7 +88,7 @@
 			compatible = "qcom,gcc-sm8250";
 			reg = <0x00100000 0x1f0000>;
 			#clock-cells = <1>;
-			#reset-cells = <1>;
+			//#reset-cells = <1>;
 			#power-domain-cells = <1>;
 		};
 
@@ -206,6 +206,18 @@
 			};
 		};
 
+		usb_1_hsphy: phy@88e3000 {
+			compatible = "qcom,sm8250-usb-hs-phy",
+				     "qcom,usb-snps-hs-7nm-phy";
+			reg = <0x088e3000 0x400>;
+			#phy-cells = <0>;
+
+			//clocks = <&rpmhcc RPMH_CXO_CLK>;
+			//clock-names = "ref";
+
+			resets = <&reset GCC_QUSB2PHY_PRIM_BCR>;
+		};
+
 		usb_2_hsphy: phy@88e4000 {
 			compatible = "qcom,sm8250-usb-hs-phy",
 				     "qcom,usb-snps-hs-7nm-phy";
@@ -221,7 +233,7 @@
 			reg = <0x088eb000 0x200>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			ranges;
+			//ranges;
 
 			clocks = <&gcc GCC_USB3_SEC_PHY_AUX_CLK>,
 				 <&gcc GCC_USB3_SEC_CLKREF_EN>,
@@ -240,13 +252,51 @@
 			#phy-cells = <0>;
 		};
 
+		usb_1: usb@a6f8800 {
+			compatible = "qcom,dwc3";
+			reg = <0x0a6f8800 0x400>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			clocks = <&gcc GCC_CFG_NOC_USB3_PRIM_AXI_CLK>,
+				 <&gcc GCC_USB30_PRIM_MASTER_CLK>,
+				 <&gcc GCC_AGGRE_USB3_PRIM_AXI_CLK>,
+				 <&gcc GCC_USB30_PRIM_SLEEP_CLK>,
+				 <&gcc GCC_USB30_PRIM_MOCK_UTMI_CLK>,
+				 <&gcc GCC_USB3_SEC_CLKREF_EN>;
+			clock-names = "cfg_noc",
+				      "core",
+				      "iface",
+				      "sleep",
+				      "mock_utmi",
+				      "xo";
+
+			assigned-clocks = <&gcc GCC_USB30_PRIM_MOCK_UTMI_CLK>,
+					  <&gcc GCC_USB30_PRIM_MASTER_CLK>;
+			assigned-clock-rates = <19200000>, <200000000>;
+
+			power-domains = <&gcc USB30_PRIM_GDSC>;
+
+			resets = <&reset GCC_USB30_PRIM_BCR>;
+
+			usb_1_dwc3: dwc3@a600000 {
+				compatible = "snps,dwc3";
+				reg = <0x0a600000 0xcd00>;
+				snps,dis_u2_susphy_quirk;
+				snps,dis_enblslpm_quirk;
+				phys = <&usb_1_hsphy>;
+				phy-names = "usb2-phy";
+				maximum-speed = "high-speed";
+				dr_mode = "host";
+			};
+		};
+
 		usb_2: usb@a8f8800 {
-			compatible = "qcom,sm8250-dwc3", "qcom,dwc3";
+			compatible = "qcom,dwc3";
 			reg = <0x0a8f8800 0x400>;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
-
 			clocks = <&gcc GCC_CFG_NOC_USB3_SEC_AXI_CLK>,
 				 <&gcc GCC_USB30_SEC_MASTER_CLK>,
 				 <&gcc GCC_AGGRE_USB3_SEC_AXI_CLK>,
@@ -264,21 +314,23 @@
 					  <&gcc GCC_USB30_SEC_MASTER_CLK>;
 			assigned-clock-rates = <19200000>, <200000000>;
 
-			power-domains = <&gcc USB30_SEC_GDSC>;
+			//power-domains = <&gcc USB30_SEC_GDSC>;
 
 			resets = <&reset GCC_USB30_SEC_BCR>;
 
-			usb_2_dwc3: usb@a800000 {
+			status = "disabled";
+			usb_2_dwc3: dwc3@a800000 {
 				compatible = "snps,dwc3";
 				reg = <0x0a800000 0xcd00>;
-				snps,dis_u2_susphy_quirk;
-				snps,dis_enblslpm_quirk;
 				//phys = <&usb_2_hsphy>, <&usb_2_qmpphy>;
 				//phy-names = "usb2-phy", "usb3-phy";
+				//maximum-speed = "super-speed";
 				phys = <&usb_2_hsphy>;
 				phy-names = "usb2-phy";
-				maximum-speed = "super-speed";
+				maximum-speed = "high-speed";
 				dr_mode = "host";
+				snps,dis_u2_susphy_quirk;
+				snps,dis_enblslpm_quirk;
 			};
 		};
 
