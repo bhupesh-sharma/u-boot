@@ -109,14 +109,14 @@ struct phy_override_seq {
 /* struct hs_7nm_phy_cfg - per-PHY initialization config */
 struct hs_7nm_phy_cfg {
 	/* clocks to be requested */
-	struct clk *clks;
+	const char * const *clks;
 	int num_clks;
 
 	/* resets to be requested */
-	struct reset_ctl *resets;
+	const char * const *resets;
 	int num_resets;
 
-	struct override_param_map *map_cfg;
+	const struct override_param_map *map_cfg;
 	struct phy_override_seq update_seq_cfg[NUM_HSPHY_TUNING_PARAMS];
 };
 
@@ -319,10 +319,32 @@ static const struct override_param_map sc7280_snps_7nm_phy[] = {
 	{},
 };
 
+/* list of clocks required by phy */
+static const char * const sm8250_usbphy_clk_l[] = {
+	"ref",
+};
+
+/* list of resets */
+static const char * const sm8250_usbphy_reset_l[] = {
+	"usbphy",
+};
+
+static const struct hs_7nm_phy_cfg sm8250_usbphy_cfg = {
+	.clks			= sm8250_usbphy_clk_l,
+	.num_clks		= ARRAY_SIZE(sm8250_usbphy_clk_l),
+	.resets			= sm8250_usbphy_reset_l,
+	.num_resets		= ARRAY_SIZE(sm8250_usbphy_reset_l),
+	.map_cfg		= sc7280_snps_7nm_phy,
+};
+
 static int hs_7nm_usb_init(struct phy *phy)
 {
 	struct hs_7nm_phy_priv *hs_7nm = dev_get_priv(phy->dev);
 	int i;
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
 
 	hs_7nm_write_mask(hs_7nm->base, USB2_PHY_USB_PHY_CFG0,
 					UTMI_PHY_CMN_CTRL_OVERRIDE_EN,
@@ -374,12 +396,20 @@ static int hs_7nm_usb_init(struct phy *phy)
 	hs_7nm_write_mask(hs_7nm->base, USB2_PHY_USB_PHY_CFG0,
 					UTMI_PHY_CMN_CTRL_OVERRIDE_EN, 0);
 
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
+
 	return 0;
 }
 
 static int hs_7nm_phy_do_reset(struct hs_7nm_phy_priv *hs_7nm)
 {
 	int i, ret;
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
 
 	for (i = 0; i < hs_7nm->num_resets; i++) {
 		ret = reset_assert(&hs_7nm->resets[i]);
@@ -395,6 +425,10 @@ static int hs_7nm_phy_do_reset(struct hs_7nm_phy_priv *hs_7nm)
 			return ret;
 	}
 
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
+
 	return 0;
 }
 
@@ -402,6 +436,10 @@ static int hs_7nm_phy_power_on(struct phy *phy)
 {
 	struct hs_7nm_phy_priv *hs_7nm = dev_get_priv(phy->dev);
 	int ret;
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
 
 	ret = hs_7nm_phy_do_reset(hs_7nm);
 	if (ret)
@@ -411,6 +449,10 @@ static int hs_7nm_phy_power_on(struct phy *phy)
 	if (ret)
 		return ret;
 
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
+
 	return 0;
 }
 
@@ -418,8 +460,16 @@ static int hs_7nm_phy_power_off(struct phy *phy)
 {
 	struct hs_7nm_phy_priv *hs_7nm = dev_get_priv(phy->dev);
 
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
+
 	reset_release_all(hs_7nm->resets, hs_7nm->num_resets);
 	clk_release_all(hs_7nm->clks, hs_7nm->num_clks);
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
 
 	return 0;
 }
@@ -429,6 +479,10 @@ static int hs_7nm_phy_reset_init(struct udevice *dev, struct hs_7nm_phy_priv *hs
 	const struct hs_7nm_phy_cfg *cfg = hs_7nm->cfg;
 	int num = cfg->num_resets;
 	int i, ret;
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
 
 	hs_7nm->num_resets = 0;
 	hs_7nm->resets = devm_kcalloc(dev, num, sizeof(*hs_7nm->resets), GFP_KERNEL);
@@ -442,6 +496,10 @@ static int hs_7nm_phy_reset_init(struct udevice *dev, struct hs_7nm_phy_priv *hs
 
 		++hs_7nm->num_resets;
 	}
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
 
 	return 0;
 
@@ -458,6 +516,10 @@ static int hs_7nm_phy_clk_init(struct udevice *dev, struct hs_7nm_phy_priv *hs_7
 	const struct hs_7nm_phy_cfg *cfg = hs_7nm->cfg;
 	int num = cfg->num_clks;
 	int i, ret;
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
 
 	hs_7nm->num_clks = 0;
 	hs_7nm->clks = devm_kcalloc(dev, num, sizeof(*hs_7nm->clks), GFP_KERNEL);
@@ -479,6 +541,10 @@ static int hs_7nm_phy_clk_init(struct udevice *dev, struct hs_7nm_phy_priv *hs_7
 		++hs_7nm->num_clks;
 	}
 
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
+
 	return 0;
 
 clk_get_err:
@@ -496,6 +562,10 @@ static void hs_7nm_override_param_update_val(
 {
 	int i;
 
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
+
 	/*
 	 * Param table for each param is in increasing order
 	 * of dt values. We need to iterate over the list to
@@ -511,6 +581,10 @@ static void hs_7nm_override_param_update_val(
 	seq_entry->offset = map.reg_offset;
 	seq_entry->mask = map.param_mask;
 	seq_entry->value = map.param_table[i].reg_val << __ffs(map.param_mask);
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
+
 }
 
 static void hs_7nm_read_override_param_seq(struct udevice *dev)
@@ -520,6 +594,10 @@ static void hs_7nm_read_override_param_seq(struct udevice *dev)
 	s32 val;
 	int ret, i;
 	const struct override_param_map *map_cfg = hs_7nm->cfg->map_cfg;
+
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Entered function\n", __func__);
+#endif
 
 	if (!map_cfg)
 		return;
@@ -535,6 +613,10 @@ static void hs_7nm_read_override_param_seq(struct udevice *dev)
 			map_cfg[i].prop_name, val, hs_7nm->cfg->update_seq_cfg[i].value);
 
 	}
+#ifdef DEBUG_HS_PHY
+	debug_hs_7nm("%s: Exiting function with success\n", __func__);
+#endif
+
 }
 
 static int hs_7nm_phy_probe(struct udevice *dev)
@@ -583,7 +665,7 @@ static const struct udevice_id hs_7nm_phy_ids[] = {
 	{ .compatible	= "qcom,usb-snps-hs-5nm-phy", },
 	{
 		.compatible	= "qcom,usb-snps-hs-7nm-phy",
-		.data		= (ulong)&sc7280_snps_7nm_phy,
+		.data		= (ulong)&sm8250_usbphy_cfg,
 	},
 	{ .compatible	= "qcom,usb-snps-femto-v2-phy",	},
 	{ }
