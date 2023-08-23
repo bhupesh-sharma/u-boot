@@ -1094,11 +1094,18 @@ struct xhci_virt_device {
 /* xHCI spec says all registers are little endian */
 static inline unsigned int xhci_readl(uint32_t volatile *regs)
 {
-	return readl(regs);
+	unsigned int val;
+	val = readl(regs);
+
+	printf("%s, Read val: 0x%x from reg: 0x%p\n", __func__,
+		       val, regs);
+	return val;
 }
 
 static inline void xhci_writel(uint32_t volatile *regs, const unsigned int val)
 {
+	printf("%s, Write val: 0x%x at reg: 0x%p\n", __func__,
+		       val, regs);
 	writel(val, regs);
 }
 
