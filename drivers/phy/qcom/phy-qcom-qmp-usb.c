@@ -64,7 +64,7 @@
 /* QPHY_V3_PCS_MISC_CLAMP_ENABLE register bits */
 #define CLAMP_EN				BIT(0) /* enables i/o clamp_n */
 
-#define PHY_INIT_COMPLETE_TIMEOUT		(200 * 10000)
+#define PHY_INIT_COMPLETE_TIMEOUT		(3200 * 10000)
 
 struct qmp_phy_init_tbl {
 	unsigned int offset;
@@ -958,8 +958,10 @@ static int qmp_phy_power_on(struct phy *phy)
 
 	status = pcs + cfg->regs[QPHY_PCS_STATUS];
 	ret = readl_poll_timeout(status, val, !(val & PHYSTATUS), PHY_INIT_COMPLETE_TIMEOUT);
-	if (ret)
+	if (ret) {
+		printf("%s: PHY cannot be turned on, ret=%d\n", __func__, ret);
 		return ret;
+	}
 
 	return 0;
 }
@@ -1112,9 +1114,9 @@ static int qmp_phy_probe(struct udevice *dev)
 	}
 
 	/* controllers using QMP phys use 125MHz pipe clock interface */
-	qmp->pipe_clk = devm_clk_get(dev, "pipe");
-	if (IS_ERR(qmp->pipe_clk))
-		return PTR_ERR(qmp->pipe_clk);
+	//qmp->pipe_clk = devm_clk_get(dev, "pipe");
+	//if (IS_ERR(qmp->pipe_clk))
+		//return PTR_ERR(qmp->pipe_clk);
 
 #ifdef DEBUG_QMP
 	debug_qmp("%s: Exiting function with success\n", __func__);
