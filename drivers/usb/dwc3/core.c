@@ -40,6 +40,81 @@
 
 #define NSEC_PER_SEC	1000000000L
 
+#define DWC3_GSNPS_ID(p)	(((p) & DWC3_GSNPSID_MASK) >> 16)
+#define DWC3_IP_IS(_ip)							\
+	(dwc->ip == _ip##_IP)
+
+#define DWC3_VER_IS(_ip, _ver)						\
+	(DWC3_IP_IS(_ip) && dwc->revision == _ip##_REVISION_##_ver)
+
+#define DWC3_VER_IS_PRIOR(_ip, _ver)					\
+	(DWC3_IP_IS(_ip) && dwc->revision < _ip##_REVISION_##_ver)
+
+#define DWC3_VER_IS_WITHIN(_ip, _from, _to)				\
+	(DWC3_IP_IS(_ip) &&						\
+	 dwc->revision >= _ip##_REVISION_##_from &&			\
+	 (!(_ip##_REVISION_##_to) ||					\
+	  dwc->revision <= _ip##_REVISION_##_to))
+
+#define DWC3_VER_TYPE_IS_WITHIN(_ip, _ver, _from, _to)			\
+	(DWC3_VER_IS(_ip, _ver) &&					\
+	 dwc->version_type >= _ip##_VERSIONTYPE_##_from &&		\
+	 (!(_ip##_VERSIONTYPE_##_to) ||					\
+	  dwc->version_type <= _ip##_VERSIONTYPE_##_to))
+
+#define DWC3_IP			0x5533
+#define DWC31_IP		0x3331
+#define DWC32_IP		0x3332
+
+#define DWC3_VER_NUMBER		0xc1a0
+#define DWC3_VER_TYPE		0xc1a4
+
+#define DWC3_VER_IS_PRIOR(_ip, _ver)					\
+	(DWC3_IP_IS(_ip) && dwc->revision < _ip##_REVISION_##_ver)
+
+#define DWC3_VER_IS_WITHIN(_ip, _from, _to)				\
+	(DWC3_IP_IS(_ip) &&						\
+	 dwc->revision >= _ip##_REVISION_##_from &&			\
+	 (!(_ip##_REVISION_##_to) ||					\
+	  dwc->revision <= _ip##_REVISION_##_to))
+
+/* Global User Control 1 Register */
+#define DWC3_GUCTL1_DEV_DECOUPLE_L1L2_EVT	BIT(31)
+#define DWC3_GUCTL1_TX_IPGAP_LINECHECK_DIS	BIT(28)
+#define DWC3_GUCTL1_DEV_FORCE_20_CLK_FOR_30_CLK	BIT(26)
+#define DWC3_GUCTL1_DEV_L1_EXIT_BY_HW		BIT(24)
+#define DWC3_GUCTL1_PARKMODE_DISABLE_SS		BIT(17)
+#define DWC3_GUCTL1_PARKMODE_DISABLE_HS		BIT(16)
+#define DWC3_GUCTL1_RESUME_OPMODE_HS_HOST	BIT(10)
+
+#define DWC3_REVISION_ANY	0x0
+#define DWC3_REVISION_173A	0x5533173a
+#define DWC3_REVISION_175A	0x5533175a
+#define DWC3_REVISION_180A	0x5533180a
+#define DWC3_REVISION_183A	0x5533183a
+#define DWC3_REVISION_185A	0x5533185a
+#define DWC3_REVISION_187A	0x5533187a
+#define DWC3_REVISION_188A	0x5533188a
+#define DWC3_REVISION_190A	0x5533190a
+#define DWC3_REVISION_194A	0x5533194a
+#define DWC3_REVISION_200A	0x5533200a
+#define DWC3_REVISION_202A	0x5533202a
+#define DWC3_REVISION_210A	0x5533210a
+#define DWC3_REVISION_220A	0x5533220a
+#define DWC3_REVISION_230A	0x5533230a
+#define DWC3_REVISION_240A	0x5533240a
+#define DWC3_REVISION_250A	0x5533250a
+#define DWC3_REVISION_260A	0x5533260a
+#define DWC3_REVISION_270A	0x5533270a
+#define DWC3_REVISION_280A	0x5533280a
+#define DWC3_REVISION_290A	0x5533290a
+#define DWC3_REVISION_300A	0x5533300a
+#define DWC3_REVISION_310A	0x5533310a
+#define DWC3_REVISION_330A	0x5533330a
+
+#define DWC3_REVISION_ANY	0x0
+#define DWC31_REVISION_ANY	0x0
+
 static LIST_HEAD(dwc3_list);
 /* -------------------------------------------------------------------------- */
 
@@ -107,7 +182,7 @@ static void dwc3_frame_length_adjustment(struct dwc3 *dwc, u32 fladj)
 {
 	u32 reg;
 
-	if (dwc->revision < DWC3_REVISION_250A)
+	if (DWC3_VER_IS_PRIOR(DWC3, 250A))
 		return;
 
 	if (fladj == 0)
@@ -150,7 +225,7 @@ static void dwc3_ref_clk_period(struct dwc3 *dwc)
 	reg |=  FIELD_PREP(DWC3_GUCTL_REFCLKPER_MASK, period);
 	dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
 
-	if (dwc->revision <= DWC3_REVISION_250A)
+	if (DWC3_VER_IS_PRIOR(DWC3, 250A))
 		return;
 
 	/*
@@ -491,7 +566,7 @@ static void dwc3_phy_setup(struct dwc3 *dwc)
 	 * will be '0' when the core is reset. Application needs to set it
 	 * to '1' after the core initialization is completed.
 	 */
-	if (dwc->revision > DWC3_REVISION_194A)
+	if (!DWC3_VER_IS_WITHIN(DWC3, ANY, 194A))
 		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
 
 	/*
@@ -543,7 +618,7 @@ static void dwc3_phy_setup(struct dwc3 *dwc)
 	 * be '0' when the core is reset. Application needs to set it to
 	 * '1' after the core initialization is completed.
 	 */
-	if (dwc->revision > DWC3_REVISION_194A)
+	if (!DWC3_VER_IS_WITHIN(DWC3, ANY, 194A))
 		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
 
 	if (dwc->dis_u2_susphy_quirk)
@@ -609,17 +684,6 @@ static void dwc3_set_incr_burst_type(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_GSBUSCFG0, cfg);
 }
 
-#define DWC3_GSNPS_ID(p)	(((p) & DWC3_GSNPSID_MASK) >> 16)
-#define DWC3_IP_IS(_ip)							\
-	(dwc->ip == _ip##_IP)
-#define DWC3_IP			0x5533
-#define DWC31_IP		0x3331
-#define DWC32_IP		0x3332
-
-
-#define DWC3_VER_NUMBER		0xc1a0
-#define DWC3_VER_TYPE		0xc1a4
-
 /**
  * dwc3_core_init - Low-level initialization of DWC3 Core
  * @dwc: Pointer to our controller context structure
@@ -634,15 +698,6 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	int			ret;
 
 	reg = dwc3_readl(dwc->regs, DWC3_GSNPSID);
-#if 0
-	/* This should read as U3 followed by revision number */
-	if ((reg & DWC3_GSNPSID_MASK) != 0x55330000) {
-		dev_err(dwc->dev, "this is not a DesignWare USB3 DRD Core\n");
-		ret = -ENODEV;
-		goto err0;
-	}
-	dwc->revision = reg;
-#else
 	dwc->ip = DWC3_GSNPS_ID(reg);
 
 	/* This should read as U3 followed by revision number */
@@ -658,8 +713,6 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	}
 
 	printf("%s, DWC3 revision: 0x%x\n", __func__, dwc->revision);
-#endif
-
 
 	/* Handle USB2.0-only core configuration */
 	if (DWC3_GHWPARAMS3_SSPHY_IFC(dwc->hwparams.hwparams3) ==
@@ -708,8 +761,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		 */
 		if ((dwc->dr_mode == USB_DR_MODE_HOST ||
 				dwc->dr_mode == USB_DR_MODE_OTG) &&
-				(dwc->revision >= DWC3_REVISION_210A &&
-				dwc->revision <= DWC3_REVISION_250A))
+				DWC3_VER_IS_WITHIN(DWC3, 210A, 250A))
 			reg |= DWC3_GCTL_DSBLCLKGTNG | DWC3_GCTL_SOFITPSYNC;
 		else
 			reg &= ~DWC3_GCTL_DSBLCLKGTNG;
@@ -752,7 +804,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	 * and falls back to high-speed mode which causes
 	 * the device to enter a Connect/Disconnect loop
 	 */
-	if (dwc->revision < DWC3_REVISION_190A)
+	if (DWC3_VER_IS_PRIOR(DWC3, 190A))
 		reg |= DWC3_GCTL_U2RSTECN;
 
 	dwc3_core_num_eps(dwc);
@@ -1196,33 +1248,6 @@ void dwc3_of_parse(struct dwc3 *dwc)
 	}
 }
 
-#define DWC3_VER_IS_PRIOR(_ip, _ver)					\
-	(DWC3_IP_IS(_ip) && dwc->revision < _ip##_REVISION_##_ver)
-
-#define DWC3_VER_IS_WITHIN(_ip, _from, _to)				\
-	(DWC3_IP_IS(_ip) &&						\
-	 dwc->revision >= _ip##_REVISION_##_from &&			\
-	 (!(_ip##_REVISION_##_to) ||					\
-	  dwc->revision <= _ip##_REVISION_##_to))
-
-/* Global User Control 1 Register */
-#define DWC3_GUCTL1_DEV_DECOUPLE_L1L2_EVT	BIT(31)
-#define DWC3_GUCTL1_TX_IPGAP_LINECHECK_DIS	BIT(28)
-#define DWC3_GUCTL1_DEV_FORCE_20_CLK_FOR_30_CLK	BIT(26)
-#define DWC3_GUCTL1_DEV_L1_EXIT_BY_HW		BIT(24)
-#define DWC3_GUCTL1_PARKMODE_DISABLE_SS		BIT(17)
-#define DWC3_GUCTL1_PARKMODE_DISABLE_HS		BIT(16)
-#define DWC3_GUCTL1_RESUME_OPMODE_HS_HOST	BIT(10)
-
-#define DWC3_REVISION_270A	0x5533270a
-#define DWC3_REVISION_280A	0x5533280a
-#define DWC3_REVISION_290A	0x5533290a
-#define DWC3_REVISION_300A	0x5533300a
-#define DWC3_REVISION_310A	0x5533310a
-#define DWC3_REVISION_330A	0x5533330a
-
-#define DWC3_REVISION_ANY	0x0
-#define DWC31_REVISION_ANY	0x0
 
 int dwc3_init(struct dwc3 *dwc)
 {
@@ -1253,16 +1278,14 @@ int dwc3_init(struct dwc3 *dwc)
 		goto event_fail;
 	}
 
-	printf("%s, Checking DWC3 Rev: 0x%x..\n", __func__, dwc->revision);
-	if (dwc->revision >= DWC3_REVISION_250A) {
-		printf("%s, DWC3 Rev: 0x%x\n", __func__, dwc->revision);
+	if (!DWC3_VER_IS_PRIOR(DWC3, 250A)) {
 		reg = dwc3_readl(dwc->regs, DWC3_GUCTL1);
 
 		/*
 		 * Enable hardware control of sending remote wakeup
 		 * in HS when the device is in the L1 state.
 		 */
-		if (dwc->revision >= DWC3_REVISION_290A)
+		if (!DWC3_VER_IS_PRIOR(DWC3, 290A))
 			reg |= DWC3_GUCTL1_DEV_L1_EXIT_BY_HW;
 
 		/*
@@ -1285,6 +1308,7 @@ int dwc3_init(struct dwc3 *dwc)
 		dwc3_writel(dwc->regs, DWC3_GUCTL1, reg);
 	}
 
+#if 0
 	printf("%s, Setting DWC3_GUCTL_HSTINAUTORETRY..\n", __func__);
 	if (dwc->dr_mode == USB_DR_MODE_HOST ||
 	    dwc->dr_mode == USB_DR_MODE_OTG) {
@@ -1294,7 +1318,7 @@ int dwc3_init(struct dwc3 *dwc)
 
 		dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
 	}
-
+#endif
 	printf("%s, Calling dwc3_core_init_mode..\n", __func__);
 	ret = dwc3_core_init_mode(dwc);
 	if (ret)
