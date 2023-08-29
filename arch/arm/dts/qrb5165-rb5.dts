@@ -10,6 +10,7 @@
 #include "skeleton64.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/clock/qcom,gcc-sm8250.h>
+#include <dt-bindings/soc/qcom,rpmh-rsc.h>
 
 / {
 	model = "Qualcomm Technologies, Inc. QRB5165 RB5";
@@ -40,6 +41,19 @@
 		#size-cells = <1>;
 		ranges = <0 0 0 0xffffffff>;
 		compatible = "simple-bus";
+
+		apps_rsc: rsc@18200000 {
+			label = "apps_rsc";
+			compatible = "qcom,rpmh-rsc";
+			reg = <0x18200000 0x10000>,
+				<0x18210000 0x10000>,
+				<0x18220000 0x10000>;
+			reg-names = "drv-0", "drv-1", "drv-2";
+			qcom,tcs-offset = <0xd00>;
+			qcom,drv-id = <2>;
+			qcom,tcs-config = <ACTIVE_TCS  2>, <SLEEP_TCS   3>,
+					  <WAKE_TCS    3>, <CONTROL_TCS 1>;
+		};
 
 		tlmm: pinctrl_west@f100000 {
 			compatible = "qcom,sm8250-pinctrl";
@@ -216,6 +230,8 @@
 			//clock-names = "ref";
 
 			resets = <&reset GCC_QUSB2PHY_PRIM_BCR>;
+
+			status = "disabled";
 		};
 
 		usb_2_hsphy: phy@88e4000 {
@@ -278,6 +294,7 @@
 			power-domains = <&gcc USB30_PRIM_GDSC>;
 
 			resets = <&reset GCC_USB30_PRIM_BCR>;
+			status = "disabled";
 
 			usb_1_dwc3: dwc3@a600000 {
 				compatible = "snps,dwc3";
@@ -288,6 +305,7 @@
 				phy-names = "usb2-phy";
 				maximum-speed = "high-speed";
 				dr_mode = "host";
+				status = "disabled";
 			};
 		};
 
@@ -318,7 +336,6 @@
 
 			resets = <&reset GCC_USB30_SEC_BCR>;
 
-			status = "disabled";
 			usb_2_dwc3: dwc3@a800000 {
 				compatible = "snps,dwc3";
 				reg = <0x0a800000 0xcd00>;
