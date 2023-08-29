@@ -96,6 +96,14 @@
 				pins = "GPIO_77";
 				function = "gpio";
 			};
+
+			usb_hub_enabled_state: usb-hub-enabled-state {
+				pins = "GPIO_131";
+				function = "gpio";
+
+				drive-strength = <2>;
+				output-low;
+			};
 		};
 
 		gcc: clock-controller@100000 {
@@ -348,6 +356,7 @@
 				dr_mode = "host";
 				snps,dis_u2_susphy_quirk;
 				snps,dis_enblslpm_quirk;
+				pinctrl-0 = <&usb_hub_enabled_state>;
 			};
 		};
 
