@@ -1271,6 +1271,7 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 int xhci_check_maxpacket(struct usb_device *udev);
 void xhci_flush_cache(uintptr_t addr, u32 type_len);
 void xhci_inval_cache(uintptr_t addr, u32 type_len);
+void xhci_flush_and_inval_cache(void *addr, unsigned long size);
 void xhci_cleanup(struct xhci_ctrl *ctrl);
 struct xhci_ring *xhci_ring_alloc(struct xhci_ctrl *ctrl, unsigned int num_segs,
 				  bool link_trbs);

@@ -142,8 +142,12 @@ static void inc_enq(struct xhci_ctrl *ctrl, struct xhci_ring *ring,
 			next->link.control |= cpu_to_le32(chain);
 
 			next->link.control ^= cpu_to_le32(TRB_CYCLE);
+#if 0
 			xhci_flush_cache((uintptr_t)next,
 					 sizeof(union xhci_trb));
+#else
+			xhci_flush_and_inval_cache(next, sizeof(union xhci_trb));
+#endif
 		}
 		/* Toggle the cycle bit after the last ring segment. */
 		if (last_trb_on_last_seg(ctrl, ring,
@@ -208,8 +212,11 @@ static dma_addr_t queue_trb(struct xhci_ctrl *ctrl, struct xhci_ring *ring,
 
 	for (i = 0; i < 4; i++)
 		trb->field[i] = cpu_to_le32(trb_fields[i]);
-
+#if 0
 	xhci_flush_cache((uintptr_t)trb, sizeof(struct xhci_generic_trb));
+#else
+	xhci_flush_and_inval_cache(trb, sizeof(struct xhci_generic_trb));
+#endif
 
 	inc_enq(ctrl, ring, more_trbs_coming);
 
@@ -262,7 +269,11 @@ static int prepare_ring(struct xhci_ctrl *ctrl, struct xhci_ring *ep_ring,
 
 		next->link.control ^= cpu_to_le32(TRB_CYCLE);
 
+#if 0
 		xhci_flush_cache((uintptr_t)next, sizeof(union xhci_trb));
+#else
+		xhci_flush_and_inval_cache(next, sizeof(union xhci_trb));
+#endif
 
 		/* Toggle the cycle bit after the last ring segment. */
 		if (last_trb_on_last_seg(ctrl, ep_ring,
@@ -390,7 +401,11 @@ static void giveback_first_trb(struct usb_device *udev, int ep_index,
 	else
 		start_trb->field[3] &= cpu_to_le32(~TRB_CYCLE);
 
+#if 0
 	xhci_flush_cache((uintptr_t)start_trb, sizeof(struct xhci_generic_trb));
+#else
+	xhci_flush_and_inval_cache(start_trb, sizeof(struct xhci_generic_trb));
+#endif
 
 	/* Ringing EP doorbell here */
 	xhci_writel(&ctrl->dba->doorbell[udev->slot_id],
@@ -432,8 +447,13 @@ static int event_ready(struct xhci_ctrl *ctrl)
 {
 	union xhci_trb *event;
 
+#if 0
 	xhci_inval_cache((uintptr_t)ctrl->event_ring->dequeue,
 			 sizeof(union xhci_trb));
+#else
+	xhci_flush_and_inval_cache(ctrl->event_ring->dequeue,
+			 sizeof(union xhci_trb));
+#endif
 
 	event = ctrl->event_ring->dequeue;
 
@@ -638,9 +658,13 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 	available_length = length;
 	ep_index = usb_pipe_ep_index(pipe);
 	virt_dev = ctrl->devs[slot_id];
-
+#if 0
 	xhci_inval_cache((uintptr_t)virt_dev->out_ctx->bytes,
 			 virt_dev->out_ctx->size);
+#else
+	xhci_flush_and_inval_cache(virt_dev->out_ctx->bytes,
+			 virt_dev->out_ctx->size);
+#endif
 
 	ep_ctx = xhci_get_ep_ctx(ctrl, virt_dev->out_ctx, ep_index);
 
@@ -705,7 +729,11 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 	first_trb = true;
 
 	/* flush the buffer before use */
+#if 0
 	xhci_flush_cache((uintptr_t)buffer, length);
+#else
+	xhci_flush_and_inval_cache(buffer, length);
+#endif
 
 	/* Queue the first TRB, even if it's zero-length */
 	do {
@@ -786,7 +814,11 @@ again:
 
 	record_transfer_result(udev, event, available_length);
 	xhci_acknowledge_event(ctrl);
+#if 0
 	xhci_inval_cache((uintptr_t)buffer, length);
+#else
+	xhci_flush_and_inval_cache(buffer, length);
+#endif
 	xhci_dma_unmap(ctrl, buf_64, length);
 
 	return (udev->status != USB_ST_NOT_PROC) ? 0 : -1;
@@ -842,8 +874,13 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 			return ret;
 	}
 
+#if 0
 	xhci_inval_cache((uintptr_t)virt_dev->out_ctx->bytes,
 			 virt_dev->out_ctx->size);
+#else
+	xhci_flush_and_inval_cache(virt_dev->out_ctx->bytes,
+			 virt_dev->out_ctx->size);
+#endif
 
 	struct xhci_ep_ctx *ep_ctx = NULL;
 	ep_ctx = xhci_get_ep_ctx(ctrl, virt_dev->out_ctx, ep_index);
@@ -937,8 +974,11 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 		trb_fields[1] = upper_32_bits(buf_64);
 		trb_fields[2] = length_field;
 		trb_fields[3] = field | ep_ring->cycle_state;
-
+#if 0
 		xhci_flush_cache((uintptr_t)buffer, length);
+#else
+		xhci_flush_and_inval_cache(buffer, length);
+#endif
 		queue_trb(ctrl, ep_ring, true, trb_fields);
 	}
 
@@ -982,7 +1022,11 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 
 	/* Invalidate buffer to make it available to usb-core */
 	if (length > 0) {
+#if 0
 		xhci_inval_cache((uintptr_t)buffer, length);
+#else
+		xhci_flush_and_inval_cache(buffer, length);
+#endif
 		xhci_dma_unmap(ctrl, buf_64, length);
 	}
 
