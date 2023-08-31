@@ -57,6 +57,18 @@ void xhci_inval_cache(uintptr_t addr, u32 len)
 				ALIGN(addr + len, CACHELINE_SIZE));
 }
 
+void xhci_flush_and_inval_cache(void *addr, unsigned long size)
+{
+	//BUG_ON(addr == NULL || size == 0);
+	
+	uintptr_t aaddr = (uintptr_t)addr & ~(ARCH_DMA_MINALIGN - 1);
+	unsigned long asize = ALIGN(size, ARCH_DMA_MINALIGN);
+
+	printf("//  %s at addr: 0x%lx, size: 0x%lx\n", __func__, aaddr, asize);
+
+	flush_dcache_range(aaddr, aaddr + asize);
+	invalidate_dcache_range(aaddr, aaddr + asize);
+}
 
 /**
  * frees the "segment" pointer passed
@@ -195,7 +207,13 @@ void xhci_cleanup(struct xhci_ctrl *ctrl)
 	xhci_dma_unmap(ctrl, ctrl->dcbaa->dma,
 		       sizeof(struct xhci_device_context_array));
 	free(ctrl->dcbaa);
-	memset(ctrl, '\0', sizeof(struct xhci_ctrl));
+	memset(ctrl, 0, sizeof(struct xhci_ctrl));
+	//memset(ctrl, '\0', sizeof(struct xhci_ctrl));
+#if 0
+	xhci_flush_cache((uintptr_t)&ctrl, sizeof(struct xhci_ctrl));
+#else
+	xhci_flush_and_inval_cache(ctrl, sizeof(struct xhci_ctrl));
+#endif
 }
 
 /**
@@ -211,9 +229,14 @@ static void *xhci_malloc(unsigned int size)
 
 	ptr = memalign(cacheline_size, ALIGN(size, cacheline_size));
 	BUG_ON(!ptr);
-	memset(ptr, '\0', size);
+	memset(ptr, 0, size);
+	//memset(ptr, '\0', size);
 
-	xhci_flush_cache((uintptr_t)ptr, size);
+#if 0
+	xhci_flush_cache((uintptr_t)&ptr, size);
+#else
+	xhci_flush_and_inval_cache(ptr, size);
+#endif
 
 	return ptr;
 }
@@ -390,8 +413,13 @@ static int xhci_scratchpad_alloc(struct xhci_ctrl *ctrl)
 			      num_sp * sizeof(u64));
 	ctrl->dcbaa->dev_context_ptrs[0] = cpu_to_le64(val_64);
 
+#if 0
 	xhci_flush_cache((uintptr_t)&ctrl->dcbaa->dev_context_ptrs[0],
 		sizeof(ctrl->dcbaa->dev_context_ptrs[0]));
+#else
+	xhci_flush_and_inval_cache((void *)&ctrl->dcbaa->dev_context_ptrs[0],
+		sizeof(ctrl->dcbaa->dev_context_ptrs[0]));
+#endif
 
 	page_size = xhci_readl(&hcor->or_pagesize) & 0xffff;
 	for (i = 0; i < 16; i++) {
@@ -405,8 +433,13 @@ static int xhci_scratchpad_alloc(struct xhci_ctrl *ctrl)
 	buf = memalign(ctrl->page_size, num_sp * ctrl->page_size);
 	if (!buf)
 		goto fail_sp3;
-	memset(buf, '\0', num_sp * ctrl->page_size);
-	xhci_flush_cache((uintptr_t)buf, num_sp * ctrl->page_size);
+	memset(buf, 0, num_sp * ctrl->page_size);
+	//memset(buf, '\0', num_sp * ctrl->page_size);
+#if 0
+	xhci_flush_cache((uintptr_t)&buf, num_sp * ctrl->page_size);
+#else
+	xhci_flush_and_inval_cache(buf, num_sp * ctrl->page_size);
+#endif
 
 	scratchpad->scratchpad = buf;
 	val_64 = xhci_dma_map(ctrl, buf, num_sp * ctrl->page_size);
@@ -415,8 +448,13 @@ static int xhci_scratchpad_alloc(struct xhci_ctrl *ctrl)
 		val_64 += ctrl->page_size;
 	}
 
-	xhci_flush_cache((uintptr_t)scratchpad->sp_array,
+#if 0
+	xhci_flush_cache((uintptr_t)&scratchpad->sp_array,
 			 sizeof(u64) * num_sp);
+#else
+	xhci_flush_and_inval_cache(scratchpad->sp_array,
+			 sizeof(u64) * num_sp);
+#endif
 
 	return 0;
 
@@ -484,6 +522,12 @@ int xhci_alloc_virt_device(struct xhci_ctrl *ctrl, unsigned int slot_id)
 	}
 
 	memset(ctrl->devs[slot_id], 0, sizeof(struct xhci_virt_device));
+#if 0
+	xhci_flush_cache((uintptr_t)&ctrl->devs[slot_id], sizeof(struct xhci_virt_device));
+#else
+	xhci_flush_and_inval_cache(ctrl->devs[slot_id], sizeof(struct xhci_virt_device));
+#endif
+
 	virt_dev = ctrl->devs[slot_id];
 
 	/* Allocate the (output) device context that will be used in the HC. */
@@ -510,8 +554,14 @@ int xhci_alloc_virt_device(struct xhci_ctrl *ctrl, unsigned int slot_id)
 	/* Point to output device context in dcbaa. */
 	ctrl->dcbaa->dev_context_ptrs[slot_id] = cpu_to_le64(byte_64);
 
+#if 0
 	xhci_flush_cache((uintptr_t)&ctrl->dcbaa->dev_context_ptrs[slot_id],
 			 sizeof(__le64));
+#else
+	xhci_flush_and_inval_cache((void *)&ctrl->dcbaa->dev_context_ptrs[slot_id],
+			 sizeof(__le64));
+#endif
+
 	return 0;
 }
 
@@ -589,8 +639,13 @@ int xhci_mem_init(struct xhci_ctrl *ctrl, struct xhci_hccr *hccr,
 		entry->rsvd = 0;
 		seg = seg->next;
 	}
-	xhci_flush_cache((uintptr_t)ctrl->erst.entries,
+#if 0
+	xhci_flush_cache((uintptr_t)&ctrl->erst.entries,
 			 ERST_NUM_SEGS * sizeof(struct xhci_erst_entry));
+#else
+	xhci_flush_and_inval_cache(ctrl->erst.entries,
+			 ERST_NUM_SEGS * sizeof(struct xhci_erst_entry));
+#endif
 
 	deq = xhci_trb_virt_to_dma(ctrl->event_ring->deq_seg,
 				   ctrl->event_ring->dequeue);
@@ -616,8 +671,13 @@ int xhci_mem_init(struct xhci_ctrl *ctrl, struct xhci_hccr *hccr,
 	xhci_scratchpad_alloc(ctrl);
 
 	/* initializing the virtual devices to NULL */
-	for (i = 0; i < MAX_HC_SLOTS; ++i)
+	for (i = 0; i < MAX_HC_SLOTS; ++i) {
 		ctrl->devs[i] = NULL;
+#if 0
+		xhci_flush_cache((uintptr_t)&ctrl->devs[i], sizeof(struct xhci_virt_device));
+		xhci_flush_and_inval_cache(ctrl->devs[i], sizeof(struct xhci_virt_device));
+#endif
+	}
 
 	/*
 	 * Just Zero'ing this register completely,
@@ -882,6 +942,11 @@ void xhci_setup_addressable_virt_dev(struct xhci_ctrl *ctrl,
 
 	/* Steps 7 and 8 were done in xhci_alloc_virt_device() */
 
-	xhci_flush_cache((uintptr_t)ep0_ctx, sizeof(struct xhci_ep_ctx));
-	xhci_flush_cache((uintptr_t)slot_ctx, sizeof(struct xhci_slot_ctx));
+#if 0
+	xhci_flush_cache((uintptr_t)&ep0_ctx, sizeof(struct xhci_ep_ctx));
+	xhci_flush_cache((uintptr_t)&slot_ctx, sizeof(struct xhci_slot_ctx));
+#else
+	xhci_flush_and_inval_cache(ep0_ctx, sizeof(struct xhci_ep_ctx));
+	xhci_flush_and_inval_cache(slot_ctx, sizeof(struct xhci_slot_ctx));
+#endif
 }
