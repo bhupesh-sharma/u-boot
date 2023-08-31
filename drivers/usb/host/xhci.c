@@ -177,9 +177,64 @@ static int xhci_start(struct xhci_hcor *hcor)
 	temp = xhci_readl(&hcor->or_usbcmd);
 	printf("Starting the controller: reading or_usbcmd: 0x%x\n", temp);
 	temp |= (CMD_RUN);
-	writel(0x81001808, 0xA60C11c);
-	writel(0x102000, 0xA60C110);
+#if 0
+	/* scratch regs for utmi clk */
+	writel(0x104, 0xA6F8808);
+	udelay(1000);
+	writel(0x10d, 0xA6F8808);
+	udelay(1000);
+        writel(0xd,   0xA6F8808);
+	wmb();
+	udelay(1000);
+
+	/* scratch regs for utmi clk */
+	writel(0x104, 0xA8F8808);
+	udelay(1000);
+	writel(0x10d, 0xA8F8808);
+	udelay(1000);
+        writel(0xd,   0xA8F8808);
+	wmb();
+	udelay(1000);
+#endif
+
+#if 0
+	writel(0x60500,   0xA60C128);
+	writel(0x30c1002, 0xA60C2c0);
+	writel(0x102400,  0xA60C200);
+	writel(0x30e1002, 0xA60C2c0);
+	writel(0x102000,  0xA60C110);
+	writel(0xfffff000,0xA60C400);
+	writel(0xf,       0xA60C404);
+	writel(0x1000,    0xA60C408);
+	writel(0x0,       0xA60C40c);
+	writel(0x81001808,0xA60C11c);
+	writel(0x101000, 0xA60C110);
+	wmb();
+#endif
+
+#if 0
+	writel(0xfffff000,0xA80C400);
+	writel(0xf,       0xA80C404);
+#endif
+
+#if 0
+	writel(0x60500,   0xA80C128);
+	writel(0x30c1002, 0xA80C2c0);
+	writel(0x102400,  0xA80C200);
+	writel(0x30e1002, 0xA80C2c0);
+
+	writel(0x1000,    0xA80C408);
+	writel(0x0,       0xA80C40c);
+	writel(0x81001808,0xA80C11c);
+	writel(0x102000,  0xA80C110);
+#endif
+	//writel(0x81001808,0xA80C11c);
+	//writel(0x101000,  0xA80C110);
+	wmb();
+
 	xhci_writel(&hcor->or_usbcmd, temp);
+	//xhci_writel(&hcor->or_usbcmd, 0x2);
+	wmb();
 
 	puts("Starting the controller: CMD_RUN issued\n");
 	/*
@@ -520,7 +575,12 @@ static int xhci_configure_endpoints(struct usb_device *udev, bool ctx_change)
 	virt_dev = ctrl->devs[udev->slot_id];
 	in_ctx = virt_dev->in_ctx;
 
-	xhci_flush_cache((uintptr_t)in_ctx->bytes, in_ctx->size);
+#if 0
+	xhci_flush_cache((uintptr_t)&in_ctx->bytes, in_ctx->size);
+	xhci_inval_cache((uintptr_t)&in_ctx->bytes, in_ctx->size);
+#else
+	xhci_flush_and_inval_cache(in_ctx->bytes, in_ctx->size);
+#endif
 	xhci_queue_command(ctrl, in_ctx->dma, udev->slot_id, 0,
 			   ctx_change ? TRB_EVAL_CONTEXT : TRB_CONFIG_EP);
 	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
@@ -595,7 +655,11 @@ static int xhci_set_configuration(struct usb_device *udev)
 			max_ep_flag = ep_flag;
 	}
 
-	xhci_inval_cache((uintptr_t)out_ctx->bytes, out_ctx->size);
+#if 0
+	xhci_inval_cache((uintptr_t)&out_ctx->bytes, out_ctx->size);
+#else
+	xhci_flush_and_inval_cache(out_ctx->bytes, out_ctx->size);
+#endif
 
 	/* slot context */
 	xhci_slot_copy(ctrl, in_ctx, out_ctx);
@@ -758,8 +822,13 @@ static int xhci_address_device(struct usb_device *udev, int root_portnr)
 		 */
 		return ret;
 
-	xhci_inval_cache((uintptr_t)virt_dev->out_ctx->bytes,
+#if 0
+	xhci_inval_cache((uintptr_t)&virt_dev->out_ctx->bytes,
 			 virt_dev->out_ctx->size);
+#else
+	xhci_flush_and_inval_cache(virt_dev->out_ctx->bytes,
+			 virt_dev->out_ctx->size);
+#endif
 	slot_ctx = xhci_get_slot_ctx(ctrl, virt_dev->out_ctx);
 
 	printf("xHC internal address is: %d\n",
@@ -838,7 +907,11 @@ int xhci_check_maxpacket(struct usb_device *udev)
 	int ret = 0;
 
 	out_ctx = ctrl->devs[slot_id]->out_ctx;
-	xhci_inval_cache((uintptr_t)out_ctx->bytes, out_ctx->size);
+#if 0
+	xhci_inval_cache((uintptr_t)&out_ctx->bytes, out_ctx->size);
+#else
+	xhci_flush_and_inval_cache(out_ctx->bytes, out_ctx->size);
+#endif
 
 	ep_ctx = xhci_get_ep_ctx(ctrl, out_ctx, ep_index);
 	hw_max_packet_size = MAX_PACKET_DECODED(le32_to_cpu(ep_ctx->ep_info2));
@@ -1037,10 +1110,17 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 		tmpbuf[1] = 0;
 		srcptr = tmpbuf;
 		srclen = 2;
+		printf("USB_REQ_GET_STATUS, RT_HUB, *tmpbuf:0x%x\n", *tmpbuf);
 		break;
 	case USB_REQ_GET_STATUS | ((USB_RT_PORT | USB_DIR_IN) << 8):
 		memset(tmpbuf, 0, 4);
+#if 0
+		xhci_flush_cache((uintptr_t)&tmpbuf, 4);
+#else
+		xhci_flush_and_inval_cache(tmpbuf, 4);
+#endif
 		reg = xhci_readl(status_reg);
+		printf("USB_REQ_GET_STATUS, RT_PORT, reg: 0x%x\n", reg);
 		if (reg & PORT_CONNECT) {
 			tmpbuf[0] |= USB_PORT_STAT_CONNECTION;
 			switch (reg & DEV_SPEED_MASK) {
@@ -1095,6 +1175,7 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 	case USB_REQ_SET_FEATURE | ((USB_DIR_OUT | USB_RT_PORT) << 8):
 		reg = xhci_readl(status_reg);
 		reg = xhci_port_state_to_neutral(reg);
+		printf("USB_REQ_SET_FEATURE, RT_PORT, reg: 0x%x\n", reg);
 		switch (le16_to_cpu(req->value)) {
 		case USB_PORT_FEAT_ENABLE:
 			reg |= PORT_PE;
@@ -1147,10 +1228,17 @@ static int xhci_submit_root(struct usb_device *udev, unsigned long pipe,
 
 	len = min(srclen, (int)le16_to_cpu(req->length));
 
-	if (srcptr != NULL && len > 0)
+	if (srcptr != NULL && len > 0) {
 		memcpy(buffer, srcptr, len);
-	else
+#if 0
+		xhci_flush_cache((uintptr_t)&buffer, len);
+		xhci_inval_cache((uintptr_t)&buffer, len);
+#else
+		xhci_flush_and_inval_cache(buffer, len);
+#endif
+	} else {
 		printf("Len is 0\n");
+	}
 
 	udev->act_len = len;
 	udev->status = 0;
@@ -1408,7 +1496,11 @@ static int xhci_update_hub_device(struct udevice *dev, struct usb_device *udev)
 	ctrl_ctx->add_flags = cpu_to_le32(SLOT_FLAG);
 	ctrl_ctx->drop_flags = 0;
 
-	xhci_inval_cache((uintptr_t)out_ctx->bytes, out_ctx->size);
+#if 0
+	xhci_inval_cache((uintptr_t)&out_ctx->bytes, out_ctx->size);
+#else
+	xhci_flush_and_inval_cache(out_ctx->bytes, out_ctx->size);
+#endif
 
 	/* slot context */
 	xhci_slot_copy(ctrl, in_ctx, out_ctx);
@@ -1479,15 +1571,19 @@ int xhci_register(struct udevice *dev, struct xhci_hccr *hccr,
 	 */
 	priv->desc_before_addr = false;
 
+	printf("%s: // calling xhci_reset!\n", __func__);
 	ret = xhci_reset(hcor);
 	if (ret)
 		goto err;
 
+	printf("%s: // xhci_reset OK!\n", __func__);
 	ctrl->hccr = hccr;
 	ctrl->hcor = hcor;
+	printf("%s: // calling xhci_lowlevel_init!\n", __func__);
 	ret = xhci_lowlevel_init(ctrl);
 	if (ret)
 		goto err;
+	printf("%s: // xhci_lowlevel_init OK!\n", __func__);
 
 	return 0;
 err:
