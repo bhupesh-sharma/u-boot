@@ -270,9 +270,11 @@ static int msm_sdc_probe(struct udevice *dev)
 	if (ret)
 		return ret;
 
+#if 0
 	/* Reset the vendor spec register to power on reset state */
 	writel(CORE_VENDOR_SPEC_POR_VAL,
 			host->ioaddr + var_info->offset->core_vendor_spec);
+#endif
 
 	var_info = (void *)dev_get_driver_data(dev);
 	if (!var_info->mci_removed) {
