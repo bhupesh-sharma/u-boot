@@ -363,78 +363,96 @@ static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
 	if (unlikely(host->ops->write_l))
 		host->ops->write_l(host, val, reg);
-	else
+	else {
+		printk("%s: writel(0x%x, 0x%pS)\n", __func__, val, host->ioaddr + reg);
 		writel(val, host->ioaddr + reg);
+	}
 }
 
 static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 {
 	if (unlikely(host->ops->write_w))
 		host->ops->write_w(host, val, reg);
-	else
+	else {
+		printk("%s: writew(0x%x, 0x%pS)\n", __func__, val, host->ioaddr + reg);
 		writew(val, host->ioaddr + reg);
+	}
 }
 
 static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 {
 	if (unlikely(host->ops->write_b))
 		host->ops->write_b(host, val, reg);
-	else
+	else {
+		printk("%s: writeb(0x%x, 0x%pS)\n", __func__, val, host->ioaddr + reg);
 		writeb(val, host->ioaddr + reg);
+	}
 }
 
 static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 {
 	if (unlikely(host->ops->read_l))
 		return host->ops->read_l(host, reg);
-	else
+	else {
+		printk("%s: readl val: 0x%x from addr: 0x%pS\n", __func__, readl(host->ioaddr +reg), host->ioaddr + reg);
 		return readl(host->ioaddr + reg);
+	}
 }
 
 static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 {
 	if (unlikely(host->ops->read_w))
 		return host->ops->read_w(host, reg);
-	else
+	else {
+		printk("%s: readw val: 0x%x from addr: 0x%pS\n", __func__, readw(host->ioaddr +reg), host->ioaddr + reg);
 		return readw(host->ioaddr + reg);
+	}
 }
 
 static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 {
 	if (unlikely(host->ops->read_b))
 		return host->ops->read_b(host, reg);
-	else
+	else {
+		printk("%s: readb val: 0x%x from addr: 0x%pS\n", __func__, readb(host->ioaddr +reg), host->ioaddr + reg);
 		return readb(host->ioaddr + reg);
+	}
 }
 
 #else
 
 static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
+	printk("%s: writel(0x%x, 0x%pS)\n", __func__, val, host->ioaddr + reg);
 	writel(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 {
+	printk("%s: writew(0x%x, 0x%pS)\n", __func__, val, host->ioaddr + reg);
 	writew(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 {
+	printk("%s: writeb(0x%x, 0x%pS)\n", __func__, val, host->ioaddr + reg);
 	writeb(val, host->ioaddr + reg);
 }
 static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 {
+	printk("%s: readl val: 0x%x from addr: 0x%pS\n", __func__, readl(host->ioaddr +reg), host->ioaddr + reg);
 	return readl(host->ioaddr + reg);
 }
 
 static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 {
+	printk("%s: readw val: 0x%x from addr: 0x%pS\n", __func__, readw(host->ioaddr +reg), host->ioaddr + reg);
 	return readw(host->ioaddr + reg);
 }
 
 static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 {
+	printk("%s: readb val: 0x%x from addr: 0x%pS\n", __func__, readb(host->ioaddr +reg), host->ioaddr + reg);
 	return readb(host->ioaddr + reg);
 }
 #endif
