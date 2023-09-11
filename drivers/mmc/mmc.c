@@ -2808,11 +2808,15 @@ static int mmc_power_cycle(struct mmc *mmc)
 {
 	int ret;
 
+	printf("%s: calling mmc_power_off()\n", __func__);
 	ret = mmc_power_off(mmc);
+	printf("%s: mmc_power_off() returned %d\n", __func__, ret);
 	if (ret)
 		return ret;
 
+	printf("%s: calling mmc_host_power_cycle()\n", __func__);
 	ret = mmc_host_power_cycle(mmc);
+	printf("%s: mmc_host_power_cycle() returned %d\n", __func__, ret);
 	if (ret)
 		return ret;
 
@@ -2829,6 +2833,7 @@ int mmc_get_op_cond(struct mmc *mmc, bool quiet)
 	bool uhs_en = supports_uhs(mmc->cfg->host_caps);
 	int err;
 
+	printf("%s: Entering func\n", __func__);
 	if (mmc->has_init)
 		return 0;
 
@@ -2842,7 +2847,9 @@ int mmc_get_op_cond(struct mmc *mmc, bool quiet)
 		      MMC_QUIRK_RETRY_APP_CMD;
 #endif
 
+	printf("%s: calling mmc_power_cycle()\n", __func__);
 	err = mmc_power_cycle(mmc);
+	printf("%s: mmc_power_cycle() returned %d\n", __func__, err);
 	if (err) {
 		/*
 		 * if power cycling is not supported, we should not try
@@ -2862,7 +2869,9 @@ int mmc_get_op_cond(struct mmc *mmc, bool quiet)
 	 * Re-initialization is needed to clear old configuration for
 	 * mmc rescan.
 	 */
+	printf("%s: calling mmc_reinit()\n", __func__);
 	err = mmc_reinit(mmc);
+	printf("%s: mmc_reinit() returned %d\n", __func__, err);
 #else
 	/* made sure it's not NULL earlier */
 	err = mmc->cfg->ops->init(mmc);
@@ -2872,10 +2881,14 @@ int mmc_get_op_cond(struct mmc *mmc, bool quiet)
 	mmc->ddr_mode = 0;
 
 retry:
+	printf("%s: calling mmc_set_initial_state()\n", __func__);
 	mmc_set_initial_state(mmc);
+	printf("%s: mmc_set_initial_state() returned\n", __func__);
 
 	/* Reset the Card */
+	printf("%s: calling mmc_go_idle()\n", __func__);
 	err = mmc_go_idle(mmc);
+	printf("%s: mmc_go_idle() returned %d\n", __func__, err);
 
 	if (err)
 		return err;
@@ -2883,11 +2896,15 @@ retry:
 	/* The internal partition reset to user partition(0) at every CMD0 */
 	mmc_get_blk_desc(mmc)->hwpart = 0;
 
+	printf("%s: calling mmc_send_if_cond()\n", __func__);
 	/* Test for SD version 2 */
 	err = mmc_send_if_cond(mmc);
+	printf("%s: mmc_send_if_cond() returned %d\n", __func__, err);
 
+	printf("%s: calling sd_send_op_cond()\n", __func__);
 	/* Now try to get the SD card's operating condition */
 	err = sd_send_op_cond(mmc, uhs_en);
+	printf("%s: sd_send_op_cond() returned %d\n", __func__, err);
 	if (err && uhs_en) {
 		uhs_en = false;
 		mmc_power_cycle(mmc);
@@ -2907,6 +2924,7 @@ retry:
 		}
 	}
 
+	printf("%s: Exiting func with status %d\n", __func__, err);
 	return err;
 }
 
@@ -2915,6 +2933,7 @@ int mmc_start_init(struct mmc *mmc)
 	bool no_card;
 	int err = 0;
 
+	printf("%s: Entering func\n", __func__);
 	/*
 	 * all hosts are capable of 1 bit bus-width and able to use the legacy
 	 * timings.
@@ -2959,7 +2978,9 @@ int mmc_start_init(struct mmc *mmc)
 		return -ENOMEDIUM;
 	}
 
+	printf("%s: calling mmc_get_op_cond()\n", __func__);
 	err = mmc_get_op_cond(mmc, false);
+	printf("%s: mmc_get_op_cond() returned %d\n", __func__, err);
 
 	if (!err)
 		mmc->init_in_progress = 1;
