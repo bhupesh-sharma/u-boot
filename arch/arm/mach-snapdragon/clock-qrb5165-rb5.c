@@ -78,7 +78,6 @@ static struct pll_vote_clk gpll0_vote_clk = {
 	.vote_bit = BIT(0),
 };
 
-
 const struct freq_tbl *qcom_find_freq(const struct freq_tbl *f, uint rate)
 {
 	if (!f)
@@ -161,6 +160,7 @@ writel(0x00000001, 0x110080);
 		//clk_enable_cbc(priv->base + USB3_SEC_PHY_PIPE_MUXR);
 		break;
 
+#endif
 	case GCC_SDCC2_APPS_CLK:
 		/* SDCC2: 200MHz */
 		clk_rcg_set_rate_mnd(priv->base, &sdhc2_regs, 4, 0, 0,
@@ -171,7 +171,6 @@ writel(0x00000001, 0x110080);
 	case GCC_SDCC2_AHB_CLK:
 		clk_enable_cbc(priv->base + SDCC2_AHB_CBCR);
 		break;
-#endif
 	case GCC_QUPV3_WRAP1_S4_CLK: /* Debug UART */
 		return clk_init_uart(priv, rate);
 	default:
@@ -305,7 +304,7 @@ void msm_rpmh_rsc_writes(void)
 
 int msm_enable(struct clk *clk)
 {
-	msm_rpmh_rsc_writes();
+	//msm_rpmh_rsc_writes();
 
 	return 0;
 }
