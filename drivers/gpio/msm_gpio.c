@@ -97,8 +97,17 @@ static int msm_gpio_direction_output(struct udevice *dev, unsigned gpio,
 static int msm_gpio_get_value(struct udevice *dev, unsigned gpio)
 {
 	struct msm_gpio_bank *priv = dev_get_priv(dev);
+	phys_addr_t base = priv->east_base;
+	ofnode dp;
 
-	return !!(readl(priv->east_base + GPIO_IN_OUT_OFF(gpio)) >> GPIO_IN);
+	dp = dev_ofnode(dev);
+
+	if (ofnode_device_is_compatible(dp, "qcom,sm8250-pinctrl"))
+		base = (gpio == 77) ? priv->north_base : priv->east_base;
+
+	debug("%s: base: 0x%llx, base + GPIO_IN_OUT_OFF(gpio): 0x%llx, gpio: %d\n",
+		       __func__, base, base + GPIO_IN_OUT_OFF(gpio), gpio);
+	return !!(readl(base + GPIO_IN_OUT_OFF(gpio)) >> GPIO_IN);
 }
 
 static int msm_gpio_get_function(struct udevice *dev, unsigned offset)
