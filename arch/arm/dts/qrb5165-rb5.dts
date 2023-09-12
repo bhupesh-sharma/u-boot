@@ -147,8 +147,8 @@
 			clock = <&gcc GCC_SDCC2_AHB_CLK>,
 				<&gcc GCC_SDCC2_APPS_CLK>;
 
-			resets = <&reset GCC_SDCC2_BCR>;
-			reset-names = "core";
+			//resets = <&reset GCC_SDCC2_BCR>;
+			//reset-names = "core";
 
 			cd-gpios = <&tlmm 77 GPIO_ACTIVE_LOW>; /* card detect gpio */
 			//vmmc-supply = <&vreg_l9c_2p96>;
