@@ -236,7 +236,6 @@ static int msm_sdc_probe(struct udevice *dev)
 	u32 host_version, core_version, core_minor, core_major;
 	u32 caps;
 	int ret;
-	u32 val;
 
 	printf("%s: Entering func..\n", __func__);
 
@@ -248,19 +247,6 @@ static int msm_sdc_probe(struct udevice *dev)
 		udelay(500);
 	}
 
-#if 0
-#define GCC_SDCC2_BCR	0x00114000
-
-	val = readl(GCC_SDCC2_BCR);
-	/* Reset GCC_SDCC2_BCR register */
-	val |= BIT(0);
-	writel(val, GCC_SDCC2_BCR);
-
-	udelay(500);
-	writel(0x0, GCC_SDCC2_BCR);
-	udelay(500);
-
-#endif
 	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD | SDHCI_QUIRK_BROKEN_R1B;
 
 	host->max_clk = 0;
@@ -270,13 +256,15 @@ static int msm_sdc_probe(struct udevice *dev)
 	if (ret)
 		return ret;
 
-#if 0
+	var_info = (void *)dev_get_driver_data(dev);
+
+	debug("%s: Writing 0x%x on vendor spec register 0x%p\n",
+		       __func__, CORE_VENDOR_SPEC_POR_VAL,
+			host->ioaddr + var_info->offset->core_vendor_spec);
 	/* Reset the vendor spec register to power on reset state */
 	writel(CORE_VENDOR_SPEC_POR_VAL,
 			host->ioaddr + var_info->offset->core_vendor_spec);
-#endif
 
-	var_info = (void *)dev_get_driver_data(dev);
 	if (!var_info->mci_removed) {
 		ret = msm_sdc_mci_init(prv);
 		if (ret)
