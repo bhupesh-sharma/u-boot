@@ -25,10 +25,48 @@
 static void sdhci_reset(struct sdhci_host *host, u8 mask)
 {
 	unsigned long timeout;
+	static bool first_pass = false;
 
 	/* Wait max 100 ms */
 	timeout = 100;
+
+	if (first_pass == false) {
+		debug("%s: Reading GCC regs - Attempt 1,\n\t0x%x 0x%x 0x%x 0x%x\n\t0x%x 0x%x 0x%x 0x%x\n",
+				__func__,
+				readl(0x114000), readl(0x114004),
+				readl(0x114008), readl(0x11400C),
+				readl(0x114010), readl(0x114014),
+				readl(0x114018), readl(0x11401C)
+		      );
+
+		writel(0x0,    0x114000);
+		writel(0x4221, 0x114004);
+		writel(0x1,    0x114008);
+		writel(0x0,    0x11400C);
+		writel(0x207,  0x114010);
+		writel(0x0,    0x114014);
+		writel(0x0,    0x114018);
+		writel(0x0,    0x11401C);
+
+		debug("%s: Reading GCC regs - Attempt 2,\n\t0x%x 0x%x 0x%x 0x%x\n\t0x%x 0x%x 0x%x 0x%x\n",
+				__func__,
+				readl(0x114000), readl(0x114004),
+				readl(0x114008), readl(0x11400C),
+				readl(0x114010), readl(0x114014),
+				readl(0x114018), readl(0x11401C)
+		      );
+
+		/*
+		 * Set SD GPIO similar to xBL:
+		 * #define HWIO_TLMM_SDC2_HDRV_PULL_CTL_ADDR  0xF9B7000
+		 * out_dword (HWIO_TLMM_SDC2_HDRV_PULL_CTL_ADDR, 0x1FE4);
+		 */
+		writel(0x1FE4, 0xF9B7000);
+		first_pass = true;
+	}
+
 	sdhci_writeb(host, mask, SDHCI_SOFTWARE_RESET);
+
 	while (sdhci_readb(host, SDHCI_SOFTWARE_RESET) & mask) {
 		if (timeout == 0) {
 			printf("%s: Reset 0x%x never completed.\n",
@@ -738,14 +776,11 @@ static int sdhci_init(struct mmc *mmc)
 	struct sdhci_host *host = mmc->priv;
 #if CONFIG_IS_ENABLED(DM_MMC) && CONFIG_IS_ENABLED(DM_GPIO)
 	struct udevice *dev = mmc->dev;
-printf("Bhupesh, inside %s, at %d, Marker 1\n", __func__, __LINE__);
 	gpio_request_by_name(dev, "cd-gpios", 0,
 			     &host->cd_gpio, GPIOD_IS_IN);
-printf("Bhupesh, inside %s, at %d, Marker 2\n", __func__, __LINE__);
 #endif
 
 	sdhci_reset(host, SDHCI_RESET_ALL);
-printf("Bhupesh, inside %s, at %d, Marker 3\n", __func__, __LINE__);
 
 #if defined(CONFIG_FIXED_SDHCI_ALIGNED_BUFFER)
 	host->align_buffer = (void *)CONFIG_FIXED_SDHCI_ALIGNED_BUFFER;
@@ -765,21 +800,17 @@ printf("Bhupesh, inside %s, at %d, Marker 3\n", __func__, __LINE__);
 	}
 #endif
 
-printf("Bhupesh, inside %s, at %d, Marker 4\n", __func__, __LINE__);
 	sdhci_set_power(host, fls(mmc->cfg->voltages) - 1);
 
-printf("Bhupesh, inside %s, at %d, Marker 5\n", __func__, __LINE__);
 	if (host->ops && host->ops->get_cd)
 		host->ops->get_cd(host);
 
-printf("Bhupesh, inside %s, at %d, Marker 6\n", __func__, __LINE__);
 	/* Enable only interrupts served by the SD controller */
 	sdhci_writel(host, SDHCI_INT_DATA_MASK | SDHCI_INT_CMD_MASK,
 		     SDHCI_INT_ENABLE);
 	/* Mask all sdhci interrupt sources */
 	sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
 
-printf("Bhupesh, inside %s, at %d, Marker 7\n", __func__, __LINE__);
 	return 0;
 }
 
